@@ -314,7 +314,7 @@ const buildMenuButtons = [
   { label: "AffirmingWords", towerType: "affirm", direction: "down" },
   { label: "GladRadio", towerType: "radio", direction: "left" }
 ];
-const TOWER_PIXEL_DIM = 8;
+const TOWER_PIXEL_DIM = 10;
 
 // =========================
 // PIXEL ART DEFINITIONS
@@ -325,47 +325,78 @@ const TOWER_PIXEL_DIM = 8;
 
 const towerPixelArt = {
   hug: [
-    { x: 2, y: 0, c: "#ff7faa" }, { x: 5, y: 0, c: "#ff7faa" },
-    { x: 1, y: 1, c: "#ff7faa" }, { x: 2, y: 1, c: "#ffb3c8" }, { x: 3, y: 1, c: "#ff7faa" }, { x: 4, y: 1, c: "#ff7faa" }, { x: 5, y: 1, c: "#ffb3c8" }, { x: 6, y: 1, c: "#ff7faa" },
-    { x: 0, y: 2, c: "#ffd7a3" }, { x: 1, y: 2, c: "#ff7faa" }, { x: 2, y: 2, c: "#ff7faa" }, { x: 3, y: 2, c: "#ff7faa" }, { x: 4, y: 2, c: "#ff7faa" }, { x: 5, y: 2, c: "#ff7faa" }, { x: 6, y: 2, c: "#ff7faa" }, { x: 7, y: 2, c: "#ffd7a3" },
-    { x: 1, y: 3, c: "#ff7faa" }, { x: 2, y: 3, c: "#2f1b2d" }, { x: 3, y: 3, c: "#ffb3c8" }, { x: 4, y: 3, c: "#ffb3c8" }, { x: 5, y: 3, c: "#2f1b2d" }, { x: 6, y: 3, c: "#ff7faa" },
-    { x: 2, y: 4, c: "#ff7faa" }, { x: 3, y: 4, c: "#2f1b2d" }, { x: 4, y: 4, c: "#2f1b2d" }, { x: 5, y: 4, c: "#ff7faa" },
-    { x: 2, y: 5, c: "#ff7faa" }, { x: 3, y: 5, c: "#ff7faa" }, { x: 4, y: 5, c: "#ff7faa" }, { x: 5, y: 5, c: "#ff7faa" },
-    { x: 3, y: 6, c: "#ff7faa" }, { x: 4, y: 6, c: "#ff7faa" },
-    { x: 3, y: 7, c: "#ff7faa" }, { x: 4, y: 7, c: "#ff7faa" }
+    { x: 3, y: 0, c: "#ff7faa" }, { x: 6, y: 0, c: "#ff7faa" },
+    { x: 2, y: 1, c: "#ff7faa" }, { x: 3, y: 1, c: "#ffb3c8" }, { x: 4, y: 1, c: "#ff7faa" }, { x: 5, y: 1, c: "#ff7faa" }, { x: 6, y: 1, c: "#ffb3c8" }, { x: 7, y: 1, c: "#ff7faa" },
+    { x: 1, y: 2, c: "#ffd7a3" }, { x: 2, y: 2, c: "#ff7faa" }, { x: 3, y: 2, c: "#ff7faa" }, { x: 4, y: 2, c: "#ff7faa" }, { x: 5, y: 2, c: "#ff7faa" }, { x: 6, y: 2, c: "#ff7faa" }, { x: 7, y: 2, c: "#ff7faa" }, { x: 8, y: 2, c: "#ffd7a3" },
+    { x: 1, y: 3, c: "#ff7faa" }, { x: 2, y: 3, c: "#ff9bbd" }, { x: 3, y: 3, c: "#2f1b2d" }, { x: 4, y: 3, c: "#ffb3c8" }, { x: 5, y: 3, c: "#ffb3c8" }, { x: 6, y: 3, c: "#2f1b2d" }, { x: 7, y: 3, c: "#ff9bbd" }, { x: 8, y: 3, c: "#ff7faa" },
+    { x: 2, y: 4, c: "#ff7faa" }, { x: 3, y: 4, c: "#ff7faa" }, { x: 4, y: 4, c: "#ffe5f0" }, { x: 5, y: 4, c: "#ffe5f0" }, { x: 6, y: 4, c: "#ff7faa" }, { x: 7, y: 4, c: "#ff7faa" },
+    { x: 1, y: 5, c: "#ff7faa" }, { x: 2, y: 5, c: "#ff7faa" }, { x: 3, y: 5, c: "#ff7faa" }, { x: 4, y: 5, c: "#ffb3c8" }, { x: 5, y: 5, c: "#ffb3c8" }, { x: 6, y: 5, c: "#ff7faa" }, { x: 7, y: 5, c: "#ff7faa" }, { x: 8, y: 5, c: "#ff7faa" },
+    { x: 2, y: 6, c: "#ff7faa" }, { x: 3, y: 6, c: "#ff7faa" }, { x: 4, y: 6, c: "#ff7faa" }, { x: 5, y: 6, c: "#ff7faa" }, { x: 6, y: 6, c: "#ff7faa" }, { x: 7, y: 6, c: "#ff7faa" },
+    { x: 3, y: 7, c: "#ff7faa" }, { x: 4, y: 7, c: "#ff9bbd" }, { x: 5, y: 7, c: "#ff9bbd" }, { x: 6, y: 7, c: "#ff7faa" },
+    { x: 3, y: 8, c: "#ff7faa" }, { x: 4, y: 8, c: "#ff7faa" }, { x: 5, y: 8, c: "#ff7faa" }, { x: 6, y: 8, c: "#ff7faa" },
+    { x: 4, y: 9, c: "#ff7faa" }, { x: 5, y: 9, c: "#ff7faa" }
   ],
 
   dog: [
-    { x: 1, y: 0, c: "#8f5a2a" }, { x: 6, y: 0, c: "#8f5a2a" },
-    { x: 0, y: 1, c: "#8f5a2a" }, { x: 1, y: 1, c: "#8f5a2a" }, { x: 2, y: 1, c: "#f4c78a" }, { x: 3, y: 1, c: "#f4c78a" }, { x: 4, y: 1, c: "#f4c78a" }, { x: 5, y: 1, c: "#f4c78a" }, { x: 6, y: 1, c: "#8f5a2a" }, { x: 7, y: 1, c: "#8f5a2a" },
-    { x: 1, y: 2, c: "#8f5a2a" }, { x: 2, y: 2, c: "#f4c78a" }, { x: 3, y: 2, c: "#f8ddb4" }, { x: 4, y: 2, c: "#f8ddb4" }, { x: 5, y: 2, c: "#f4c78a" }, { x: 6, y: 2, c: "#8f5a2a" },
-    { x: 1, y: 3, c: "#f4c78a" }, { x: 2, y: 3, c: "#f4c78a" }, { x: 3, y: 3, c: "#111111" }, { x: 4, y: 3, c: "#111111" }, { x: 5, y: 3, c: "#f4c78a" }, { x: 6, y: 3, c: "#f4c78a" },
-    { x: 2, y: 4, c: "#d99b58" }, { x: 3, y: 4, c: "#f6e4d4" }, { x: 4, y: 4, c: "#f6e4d4" }, { x: 5, y: 4, c: "#d99b58" },
-    { x: 2, y: 5, c: "#d99b58" }, { x: 3, y: 5, c: "#2b1f1a" }, { x: 4, y: 5, c: "#2b1f1a" }, { x: 5, y: 5, c: "#d99b58" },
-    { x: 2, y: 6, c: "#8f5a2a" }, { x: 3, y: 6, c: "#d99b58" }, { x: 4, y: 6, c: "#d99b58" }, { x: 5, y: 6, c: "#8f5a2a" },
-    { x: 2, y: 7, c: "#c83c4a" }, { x: 3, y: 7, c: "#e14f5d" }, { x: 4, y: 7, c: "#e14f5d" }, { x: 5, y: 7, c: "#c83c4a" }
+    { x: 2, y: 0, c: "#8f5a2a" }, { x: 7, y: 0, c: "#8f5a2a" },
+    { x: 1, y: 1, c: "#8f5a2a" }, { x: 2, y: 1, c: "#8f5a2a" }, { x: 3, y: 1, c: "#f4c78a" }, { x: 4, y: 1, c: "#f4c78a" }, { x: 5, y: 1, c: "#f4c78a" }, { x: 6, y: 1, c: "#f4c78a" }, { x: 7, y: 1, c: "#8f5a2a" }, { x: 8, y: 1, c: "#8f5a2a" },
+    { x: 1, y: 2, c: "#8f5a2a" }, { x: 2, y: 2, c: "#f4c78a" }, { x: 3, y: 2, c: "#f8ddb4" }, { x: 4, y: 2, c: "#f8ddb4" }, { x: 5, y: 2, c: "#f8ddb4" }, { x: 6, y: 2, c: "#f8ddb4" }, { x: 7, y: 2, c: "#f4c78a" }, { x: 8, y: 2, c: "#8f5a2a" },
+    { x: 1, y: 3, c: "#f4c78a" }, { x: 2, y: 3, c: "#f4c78a" }, { x: 3, y: 3, c: "#111111" }, { x: 4, y: 3, c: "#f8ddb4" }, { x: 5, y: 3, c: "#f8ddb4" }, { x: 6, y: 3, c: "#111111" }, { x: 7, y: 3, c: "#f4c78a" }, { x: 8, y: 3, c: "#f4c78a" },
+    { x: 2, y: 4, c: "#d99b58" }, { x: 3, y: 4, c: "#f6e4d4" }, { x: 4, y: 4, c: "#444444" }, { x: 5, y: 4, c: "#f6e4d4" }, { x: 6, y: 4, c: "#f6e4d4" }, { x: 7, y: 4, c: "#d99b58" },
+    { x: 2, y: 5, c: "#d99b58" }, { x: 3, y: 5, c: "#d99b58" }, { x: 4, y: 5, c: "#c83c4a" }, { x: 5, y: 5, c: "#c83c4a" }, { x: 6, y: 5, c: "#d99b58" }, { x: 7, y: 5, c: "#d99b58" },
+    { x: 3, y: 6, c: "#8f5a2a" }, { x: 4, y: 6, c: "#d99b58" }, { x: 5, y: 6, c: "#d99b58" }, { x: 6, y: 6, c: "#8f5a2a" },
+    { x: 2, y: 7, c: "#8f5a2a" }, { x: 3, y: 7, c: "#d99b58" }, { x: 4, y: 7, c: "#d99b58" }, { x: 5, y: 7, c: "#d99b58" }, { x: 6, y: 7, c: "#d99b58" }, { x: 7, y: 7, c: "#8f5a2a" },
+    { x: 3, y: 8, c: "#2eac6b" }, { x: 4, y: 8, c: "#dddddd" }, { x: 5, y: 8, c: "#2eac6b" }, { x: 6, y: 8, c: "#2eac6b" }, 
+    { x: 3, y: 9, c: "#8f5a2a" }, { x: 4, y: 9, c: "#8f5a2a" }, { x: 5, y: 9, c: "#8f5a2a" }, { x: 6, y: 9, c: "#8f5a2a" }
   ],
 
   affirm: [
-    { x: 4, y: 1, c: "#ffffff" },
-    { x: 3, y: 2, c: "#e3e3e3" }, { x: 4, y: 2, c: "#ffffff" }, { x: 5, y: 2, c: "#ffffff" },
-    { x: 2, y: 3, c: "#d0d0d0" }, { x: 3, y: 3, c: "#ffffff" }, { x: 4, y: 3, c: "#ffffff" }, { x: 5, y: 3, c: "#ffffff" }, { x: 6, y: 3, c: "#ffffff" },
-    { x: 1, y: 4, c: "#c8c8c8" }, { x: 2, y: 4, c: "#ffffff" }, { x: 3, y: 4, c: "#ffffff" }, { x: 4, y: 4, c: "#ffffff" }, { x: 5, y: 4, c: "#ffffff" }, { x: 6, y: 4, c: "#ffffff" }, { x: 7, y: 4, c: "#c8c8c8" },
-    { x: 1, y: 5, c: "#c8c8c8" }, { x: 2, y: 5, c: "#ffffff" }, { x: 3, y: 5, c: "#ffffff" }, { x: 4, y: 5, c: "#ffffff" }, { x: 5, y: 5, c: "#ffffff" }, { x: 6, y: 5, c: "#ffffff" }, { x: 7, y: 5, c: "#c8c8c8" },
-    { x: 3, y: 6, c: "#8a8a8a" }, { x: 4, y: 6, c: "#ffffff" }, { x: 5, y: 6, c: "#8a8a8a" },
-    { x: 4, y: 7, c: "#8a8a8a" }, { x: 5, y: 7, c: "#8a8a8a" }
+    { x: 6, y: 1, c: "#ffffff" },
+    { x: 5, y: 2, c: "#efefef" }, { x: 6, y: 2, c: "#ffffff" }, { x: 7, y: 2, c: "#ffffff" },
+    { x: 4, y: 3, c: "#e3e3e3" }, { x: 5, y: 3, c: "#ffffff" }, { x: 6, y: 3, c: "#ffffff" }, { x: 7, y: 3, c: "#ffffff" }, { x: 8, y: 3, c: "#ffffff" },
+    { x: 3, y: 4, c: "#d5d5d5" }, { x: 4, y: 4, c: "#ffffff" }, { x: 5, y: 4, c: "#ffffff" }, { x: 6, y: 4, c: "#ffffff" }, { x: 7, y: 4, c: "#ffffff" }, { x: 8, y: 4, c: "#ffffff" }, { x: 9, y: 4, c: "#d5d5d5" },
+    { x: 2, y: 5, c: "#c8c8c8" }, { x: 3, y: 5, c: "#ffffff" }, { x: 4, y: 5, c: "#ffffff" }, { x: 5, y: 5, c: "#ffffff" }, { x: 6, y: 5, c: "#ffffff" }, { x: 7, y: 5, c: "#ffffff" }, { x: 8, y: 5, c: "#ffffff" }, { x: 9, y: 5, c: "#c8c8c8" },
+    { x: 2, y: 6, c: "#c8c8c8" }, { x: 3, y: 6, c: "#ffffff" }, { x: 4, y: 6, c: "#ffffff" }, { x: 5, y: 6, c: "#ffffff" }, { x: 6, y: 6, c: "#ffffff" }, { x: 7, y: 6, c: "#ffffff" }, { x: 8, y: 6, c: "#ffffff" }, { x: 9, y: 6, c: "#c8c8c8" },
+    { x: 5, y: 7, c: "#8a8a8a" }, { x: 6, y: 7, c: "#ffffff" }, { x: 7, y: 7, c: "#8a8a8a" },
+    { x: 5, y: 8, c: "#8a8a8a" }, { x: 6, y: 8, c: "#8a8a8a" },
+    { x: 5, y: 9, c: "#737373" }, { x: 6, y: 9, c: "#737373" }
   ],
 
-  radio: [
-    { x: 2, y: 0, c: "#2f2f35" }, { x: 3, y: 0, c: "#2f2f35" }, { x: 4, y: 0, c: "#2f2f35" }, { x: 5, y: 0, c: "#2f2f35" },
-    { x: 1, y: 1, c: "#1f1f24" }, { x: 2, y: 1, c: "#2f2f35" }, { x: 3, y: 1, c: "#2f2f35" }, { x: 4, y: 1, c: "#2f2f35" }, { x: 5, y: 1, c: "#2f2f35" }, { x: 6, y: 1, c: "#1f1f24" },
-    { x: 0, y: 2, c: "#18181c" }, { x: 1, y: 2, c: "#4a4a54" }, { x: 2, y: 2, c: "#ededf2" }, { x: 3, y: 2, c: "#bfc4d6" }, { x: 4, y: 2, c: "#bfc4d6" }, { x: 5, y: 2, c: "#ededf2" }, { x: 6, y: 2, c: "#4a4a54" }, { x: 7, y: 2, c: "#18181c" },
-    { x: 0, y: 3, c: "#18181c" }, { x: 1, y: 3, c: "#585865" }, { x: 2, y: 3, c: "#23232a" }, { x: 3, y: 3, c: "#23232a" }, { x: 4, y: 3, c: "#23232a" }, { x: 5, y: 3, c: "#23232a" }, { x: 6, y: 3, c: "#585865" }, { x: 7, y: 3, c: "#18181c" },
-    { x: 0, y: 4, c: "#18181c" }, { x: 1, y: 4, c: "#585865" }, { x: 2, y: 4, c: "#6d6df0" }, { x: 3, y: 4, c: "#23232a" }, { x: 4, y: 4, c: "#23232a" }, { x: 5, y: 4, c: "#6d6df0" }, { x: 6, y: 4, c: "#585865" }, { x: 7, y: 4, c: "#18181c" },
-    { x: 0, y: 5, c: "#18181c" }, { x: 1, y: 5, c: "#585865" }, { x: 2, y: 5, c: "#23232a" }, { x: 3, y: 5, c: "#57d8ff" }, { x: 4, y: 5, c: "#57d8ff" }, { x: 5, y: 5, c: "#23232a" }, { x: 6, y: 5, c: "#585865" }, { x: 7, y: 5, c: "#18181c" },
-    { x: 0, y: 6, c: "#202028" }, { x: 1, y: 6, c: "#202028" }, { x: 2, y: 6, c: "#202028" }, { x: 3, y: 6, c: "#202028" }, { x: 4, y: 6, c: "#202028" }, { x: 5, y: 6, c: "#202028" }, { x: 6, y: 6, c: "#202028" }, { x: 7, y: 6, c: "#202028" },
-    { x: 1, y: 7, c: "#18181c" }, { x: 2, y: 7, c: "#18181c" }, { x: 5, y: 7, c: "#18181c" }, { x: 6, y: 7, c: "#18181c" }
-  ]
+radio: [
+  // antenna
+  { x: 7, y: 0, c: "#aaaaaa" },
+  { x: 7, y: 1, c: "#cccccc" },
+
+  // handle (with transparent gap below)
+  { x: 3, y: 1, c: "#222222" }, { x: 4, y: 1, c: "#222222" }, { x: 5, y: 1, c: "#222222" }, { x: 6, y: 1, c: "#222222" },
+
+  // body top (note: row 2 leaves space under handle at x:4,5)
+  { x: 2, y: 2, c: "#444444" }, { x: 3, y: 2, c: "#666666" },
+  { x: 6, y: 2, c: "#666666" }, { x: 7, y: 2, c: "#444444" },
+
+  // tuner row
+  { x: 1, y: 3, c: "#444444" }, { x: 2, y: 3, c: "#999999" }, { x: 3, y: 3, c: "#ffce2e" }, { x: 4, y: 3, c: "#ffce2e" },
+  { x: 5, y: 3, c: "#ffce2e" }, { x: 6, y: 3, c: "#ffce2e" }, { x: 7, y: 3, c: "#999999" }, { x: 8, y: 3, c: "#444444" },
+
+  // tuner + knobs
+  { x: 1, y: 4, c: "#444444" }, { x: 2, y: 4, c: "#bbbbbb" }, { x: 3, y: 4, c: "#fff12a" }, { x: 4, y: 4, c: "#fff12a" },
+  { x: 5, y: 4, c: "#fff12a" }, { x: 6, y: 4, c: "#fff12a" }, { x: 7, y: 4, c: "#bbbbbb" }, { x: 8, y: 4, c: "#444444" },
+
+  // speaker row 1
+  { x: 1, y: 5, c: "#444444" }, { x: 2, y: 5, c: "#222222" }, { x: 3, y: 5, c: "#111111" }, { x: 4, y: 5, c: "#222222" },
+  { x: 5, y: 5, c: "#222222" }, { x: 6, y: 5, c: "#111111" }, { x: 7, y: 5, c: "#222222" }, { x: 8, y: 5, c: "#444444" },
+
+  // speaker row 2
+  { x: 1, y: 6, c: "#444444" }, { x: 2, y: 6, c: "#bbbbbb" }, { x: 3, y: 6, c: "#222222" }, { x: 4, y: 6, c: "#111111" },
+  { x: 5, y: 6, c: "#bbbbbb" }, { x: 6, y: 6, c: "#bbbbbb" }, { x: 7, y: 6, c: "#222222" }, { x: 8, y: 6, c: "#444444" },
+
+  // bottom body
+  { x: 2, y: 7, c: "#666666" }, { x: 3, y: 7, c: "#777777" }, { x: 4, y: 7, c: "#777777" },
+  { x: 5, y: 7, c: "#777777" }, { x: 6, y: 7, c: "#777777" }, { x: 7, y: 7, c: "#666666" },
+
+  // feet
+  { x: 2, y: 8, c: "#222222" }, { x: 7, y: 8, c: "#222222" }
+],
 };
 
 const menuGrumpies = [];
