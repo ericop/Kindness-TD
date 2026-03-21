@@ -25,10 +25,13 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+      min-height: 32px;
     }
 
     #title {
       margin: 0;
+      font-size: 16px;
+      line-height: 1.1;
     }
 
     #fullscreenButton {
@@ -38,7 +41,9 @@
       color: #10233f;
       font: inherit;
       font-weight: bold;
-      padding: 10px 16px;
+      font-size: 12px;
+      line-height: 1;
+      padding: 6px 10px;
       cursor: pointer;
     }
 
@@ -69,7 +74,7 @@
       width: 100vw;
       max-width: none;
       box-sizing: border-box;
-      padding: 8px 10px;
+      padding: 4px 8px;
     }
 
     body.fullscreen-mode #gameMount {
@@ -80,7 +85,7 @@
 
     body.fullscreen-mode #gameMount canvas {
       width: 100vw;
-      height: calc(100svh - 56px);
+      height: calc(100svh - 40px);
       max-width: none;
       border-width: 0;
       object-fit: contain;
