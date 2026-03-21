@@ -13,24 +13,86 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 5px;
+      gap: 8px;
       padding: 5px;
+      min-height: 100svh;
       touch-action: manipulation;
     }
 
-    canvas {
+    #topBar {
+      width: min(100%, 780px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #title {
+      margin: 0;
+    }
+
+    #fullscreenButton {
+      border: 0;
+      border-radius: 999px;
+      background: #ff7ab6;
+      color: #10233f;
+      font: inherit;
+      font-weight: bold;
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+
+    #gameMount {
+      width: min(100%, 780px);
+      display: flex;
+      justify-content: center;
+    }
+
+    #gameMount canvas {
       border: 2px solid gray;
       background: #1f2a44;
-      width: min(100%, 780px);
+      width: 100%;
       height: auto;
       max-width: 100%;
       display: block;
       touch-action: none;
     }
+
+    body.fullscreen-mode {
+      padding: 0;
+      gap: 0;
+      background: #0d1630;
+    }
+
+    body.fullscreen-mode #topBar,
+    body.fullscreen-mode #gameMount {
+      width: 100vw;
+      max-width: none;
+      box-sizing: border-box;
+      padding: 8px 10px;
+    }
+
+    body.fullscreen-mode #gameMount {
+      flex: 1;
+      align-items: center;
+      padding-top: 0;
+    }
+
+    body.fullscreen-mode #gameMount canvas {
+      width: 100vw;
+      height: calc(100svh - 56px);
+      max-width: none;
+      border-width: 0;
+      object-fit: contain;
+    }
   </style>
 </head>
 <body>
-  <p>Kindness TD</p>
+  <div id="topBar">
+    <p id="title">Kindness TD</p>
+    <button id="fullscreenButton" type="button">Full Screen</button>
+  </div>
+  <div id="gameMount"></div>
   <script defer src="./kindness-td.js"></script>
 </body>
 </html>

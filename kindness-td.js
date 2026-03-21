@@ -3,16 +3,64 @@
 // =========================
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
-document.body.appendChild(canvas);
+const gameMount = document.getElementById("gameMount");
+const fullscreenButtonEl = document.getElementById("fullscreenButton");
+gameMount.appendChild(canvas);
 
 canvas.width = 780;
 canvas.height = 360;
 canvas.style.width = "100%";
-canvas.style.maxWidth = `${canvas.width}px`;
 canvas.style.height = "auto";
 canvas.style.touchAction = "none";
 
 let last = 0;
+let pseudoFullscreen = false;
+
+function updateFullscreenUi() {
+  const isFullscreen = !!document.fullscreenElement || pseudoFullscreen;
+  document.body.classList.toggle("fullscreen-mode", isFullscreen);
+  if (fullscreenButtonEl) {
+    fullscreenButtonEl.textContent = isFullscreen ? "Exit Full Screen" : "Full Screen";
+  }
+}
+
+async function toggleFullscreen() {
+  if (!document.fullscreenElement && !pseudoFullscreen) {
+    if (document.documentElement.requestFullscreen) {
+      try {
+        await document.documentElement.requestFullscreen();
+        return;
+      } catch (error) {
+        pseudoFullscreen = true;
+        updateFullscreenUi();
+        return;
+      }
+    }
+
+    pseudoFullscreen = true;
+    updateFullscreenUi();
+    return;
+  }
+
+  if (document.fullscreenElement && document.exitFullscreen) {
+    await document.exitFullscreen();
+    return;
+  }
+
+  pseudoFullscreen = false;
+  updateFullscreenUi();
+}
+
+if (fullscreenButtonEl) {
+  fullscreenButtonEl.addEventListener("click", () => {
+    toggleFullscreen();
+  });
+}
+
+document.addEventListener("fullscreenchange", () => {
+  pseudoFullscreen = false;
+  updateFullscreenUi();
+});
 
 // =========================
 // GRID + PATHFINDING
@@ -102,14 +150,18 @@ const state = {
   pendingRound: 1,
   instructionPages: [],
   instructionPageIndex: 0,
-  pausedFromRound: 1
+  pausedFromRound: 1,
+  menuCreditsOpen: false,
+  advancedUnlocked: false,
+  advancedMode: false,
+  justUnlockedAdvanced: false
 };
 
 const START = { x: 0, y: Math.floor(grid.rows / 2) };
 const END = { x: grid.cols - 1, y: Math.floor(grid.rows / 2) };
 const HAPPY_HANGOUT = {
-  x: canvas.width - 140,
-  y: 32,
+  x: canvas.width - 226,
+  y: 10,
   width: 120,
   height: 70
 };
@@ -161,6 +213,20 @@ function pointInRect(x, y, rect) {
     x <= rect.x + rect.w &&
     y >= rect.y &&
     y <= rect.y + rect.h
+  );
+}
+
+function doesCellOverlapRect(cx, cy, rect) {
+  const cellLeft = cx * GRID_SIZE;
+  const cellTop = cy * GRID_SIZE;
+  const cellRight = cellLeft + GRID_SIZE;
+  const cellBottom = cellTop + GRID_SIZE;
+
+  return (
+    cellLeft < rect.x + rect.width &&
+    cellRight > rect.x &&
+    cellTop < rect.y + rect.height &&
+    cellBottom > rect.y
   );
 }
 
@@ -373,10 +439,28 @@ const startButton = {
   w: 200,
   h: 50
 };
+const advancedModeButton = {
+  x: startButton.x + startButton.w + 20,
+  y: startButton.y,
+  w: 200,
+  h: 50
+};
+const creditsButton = {
+  x: canvas.width / 2 - 85,
+  y: canvas.height / 2 + 124,
+  w: 170,
+  h: 40
+};
+const creditsCloseButton = {
+  x: canvas.width / 2 - 90,
+  y: canvas.height - 74,
+  w: 180,
+  h: 40
+};
 
 const towerCosts = {
   hug: 30,
-  dog: 60,
+  dog: 80,
   affirm: 20,
   radio: 50
 };
@@ -556,15 +640,19 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
     ctx.strokeStyle = '#c84d7a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(grumpy.x - 7, grumpy.y + 4);
-    ctx.lineTo(grumpy.x - 1, grumpy.y + 1);
-    ctx.moveTo(grumpy.x - 1, grumpy.y + 1);
-    ctx.lineTo(grumpy.x + 5, grumpy.y + 5);
-    ctx.moveTo(grumpy.x + 7, grumpy.y + 4);
-    ctx.lineTo(grumpy.x + 1, grumpy.y + 1);
-    ctx.moveTo(grumpy.x + 1, grumpy.y + 1);
+    ctx.moveTo(grumpy.x - 9, grumpy.y + 1);
     ctx.lineTo(grumpy.x - 5, grumpy.y + 5);
+    ctx.lineTo(grumpy.x + 2, grumpy.y + 8);
+    ctx.moveTo(grumpy.x + 9, grumpy.y + 1);
+    ctx.lineTo(grumpy.x + 5, grumpy.y + 5);
+    ctx.lineTo(grumpy.x - 2, grumpy.y + 8);
     ctx.stroke();
+
+    ctx.fillStyle = '#f0c2ad';
+    ctx.fillRect(grumpy.x - 10, grumpy.y, 2, 2);
+    ctx.fillRect(grumpy.x + 8, grumpy.y, 2, 2);
+    ctx.fillRect(grumpy.x + 1, grumpy.y + 7, 2, 2);
+    ctx.fillRect(grumpy.x - 3, grumpy.y + 7, 2, 2);
   }
 
   if(grumpy.isHugged){
@@ -588,7 +676,7 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
   }
 }
 
-function startGame() {
+function startGame(advancedMode = false) {
   state.escapedSad = 0;
   state.gameOver = false;
   state.win = false;
@@ -597,6 +685,8 @@ function startGame() {
   state.pendingRound = 1;
   state.instructionPages = [];
   state.instructionPageIndex = 0;
+  state.advancedMode = advancedMode;
+  state.justUnlockedAdvanced = false;
 
   hugTowers.length = 0;
   therapyDogs.length = 0;
@@ -615,7 +705,8 @@ function createGrumpy(delay=0, options = {}){
   const hasDogAllergy = !!options.hasDogAllergy;
   const avoidsHugs = !!options.avoidsHugs;
   const isBoss = !!options.isBoss;
-  const maxSad = isBoss ? (options.bossHp || 1000) : 100;
+  const hpMultiplier = state.advancedMode ? 2 : 1;
+  const maxSad = (isBoss ? (options.bossHp || 1000) : 100) * hpMultiplier;
   return {
     x: START.x*GRID_SIZE+20,
     y: START.y*GRID_SIZE+20,
@@ -705,6 +796,15 @@ const therapyDogs=[];
 const affirmTowers=[];
 const radioTowers=[];
 
+function markGrumpyHappy(grumpy) {
+  if (grumpy.isHappy) return false;
+  grumpy.sad = 0;
+  grumpy.isHappy = true;
+  grumpy.isHugged = false;
+  state.happyCount++;
+  return true;
+}
+
 // =========================
 // SYSTEMS
 // =========================
@@ -717,9 +817,7 @@ function applyCareCredits(dt){
       if(Math.hypot(g.x-t.x,g.y-t.y)<t.radius){
         g.sad-=20*dt;
         if(g.sad<=0){
-          g.sad=0;
-          g.isHappy=true;
-          state.happyCount++;
+          markGrumpyHappy(g);
         }
       }
     });
@@ -749,10 +847,7 @@ function applyHugs(dt){
       g.sad-=40*dt;
 
       if(g.sad<=0){
-        g.sad=0;
-        g.isHappy=true;
-        g.isHugged=false;
-        state.happyCount++;
+        markGrumpyHappy(g);
         t.target=null;
       }
     }
@@ -775,7 +870,7 @@ function applyTherapyDogs(dt){
     });
 
     for(let g of candidates){
-      if(d.targets.length>=4) break;
+      if(d.targets.length>=2) break;
       d.targets.push(g);
     }
 
@@ -785,10 +880,7 @@ function applyTherapyDogs(dt){
       g.sad-=20*dt;
 
       if(g.sad<=0){
-        g.sad=0;
-        g.isHappy=true;
-        g.isHugged=false;
-        state.happyCount++;
+        markGrumpyHappy(g);
       }
     });
   });
@@ -832,9 +924,7 @@ function applyAffirmations(dt){
       g.sad-=25*dt;
 
       if(g.sad<=0){
-        g.sad=0;
-        g.isHappy=true;
-        state.happyCount++;
+        markGrumpyHappy(g);
         t.target=null;
       }
 
@@ -931,7 +1021,7 @@ function clamp(value, min, max) {
 function getPlacementMenuButtons(cx, cy) {
   const centerX = cx * GRID_SIZE + GRID_SIZE / 2;
   const centerY = cy * GRID_SIZE + GRID_SIZE / 2;
-  const width = prefersCoarsePointer ? 124 : 100;
+  const width = prefersCoarsePointer ? 140 : 116;
   const height = prefersCoarsePointer ? 40 : 28;
 
   return buildMenuButtons.map(button => {
@@ -1021,8 +1111,9 @@ function updatePreviewAtCell(cx, cy) {
   const key = cellKey(cx, cy);
   const isInsideGrid = cx >= 0 && cy >= 0 && cx < grid.cols && cy < grid.rows;
   const isSpawnCell = cx === START.x && cy === START.y;
+  const isHappyHangoutCell = doesCellOverlapRect(cx, cy, HAPPY_HANGOUT);
 
-  if (!isInsideGrid || isSpawnCell || grid.blocked.has(key)) {
+  if (!isInsideGrid || isSpawnCell || isHappyHangoutCell || grid.blocked.has(key)) {
     preview.valid = false;
     return;
   }
@@ -1036,8 +1127,25 @@ function handleInput(x,y,click=false){
 
 if (state.gameMode === "menu") {
   if (click) {
+    if (state.menuCreditsOpen) {
+      if (pointInRect(x, y, creditsCloseButton)) {
+        state.menuCreditsOpen = false;
+      }
+      return;
+    }
+
     if (pointInRect(x, y, startButton)) {
-      startGame();
+      startGame(false);
+      return;
+    }
+
+    if (state.advancedUnlocked && pointInRect(x, y, advancedModeButton)) {
+      startGame(true);
+      return;
+    }
+
+    if (pointInRect(x, y, creditsButton)) {
+      state.menuCreditsOpen = true;
     }
   }
   return;
@@ -1110,6 +1218,7 @@ if (state.gameMode === "menu") {
 function placeTower(cx,cy,towerType=selectedTower){
   const cost=towerCosts[towerType];
   if(state.careCredits<cost) return;
+  if (doesCellOverlapRect(cx, cy, HAPPY_HANGOUT)) return;
 
   state.careCredits-=cost;
 
@@ -1123,7 +1232,7 @@ function placeTower(cx,cy,towerType=selectedTower){
     isGrumpy: false
   };
 
-  if(towerType==="hug") hugTowers.push({...baseTower, range:40, target:null});
+  if(towerType==="hug") hugTowers.push({...baseTower, range:52, target:null});
   if(towerType==="dog") therapyDogs.push({...baseTower, speed:60, range:120, targets:[]});
   if(towerType==="affirm") affirmTowers.push({...baseTower, range:140, target:null, cooldown:0});
   if(towerType==="radio") radioTowers.push({...baseTower, radius:120});
@@ -1190,8 +1299,16 @@ function update(dt){
     state.win=false;
   }
 
-  if(state.happyCount===state.totalSpawned){
+  const roundResolved =
+    state.grumpies.length > 0 &&
+    state.grumpies.every(g => g.isHappy || g.reachedEnd);
+
+  if(roundResolved){
     if (state.currentRound >= state.totalRounds) {
+      if (!state.advancedUnlocked) {
+        state.advancedUnlocked = true;
+        state.justUnlockedAdvanced = true;
+      }
       state.gameMode="gameover";
       state.win=true;
     } else {
@@ -1330,14 +1447,95 @@ function draw(){
 
     ctx.fillStyle="#2c89ff";
     ctx.fillRect(startButton.x,startButton.y,startButton.w,startButton.h);
+    if (state.advancedUnlocked) {
+      ctx.fillStyle = "#7a3db8";
+      ctx.fillRect(
+        advancedModeButton.x,
+        advancedModeButton.y,
+        advancedModeButton.w,
+        advancedModeButton.h
+      );
+    }
+    ctx.fillStyle="#ff7ab6";
+    ctx.fillRect(creditsButton.x,creditsButton.y,creditsButton.w,creditsButton.h);
 
     ctx.strokeStyle="white";
     ctx.lineWidth=3;
     ctx.strokeRect(startButton.x,startButton.y,startButton.w,startButton.h);
+    if (state.advancedUnlocked) {
+      ctx.strokeRect(
+        advancedModeButton.x,
+        advancedModeButton.y,
+        advancedModeButton.w,
+        advancedModeButton.h
+      );
+    }
+    ctx.strokeRect(creditsButton.x,creditsButton.y,creditsButton.w,creditsButton.h);
 
     ctx.fillStyle="white";
     ctx.font="20px sans-serif";
     ctx.fillText("Start Game",canvas.width/2,startButton.y+32);
+    if (state.advancedUnlocked) {
+      ctx.font = "18px sans-serif";
+      ctx.fillText(
+        "Advanced Mode",
+        advancedModeButton.x + advancedModeButton.w / 2,
+        advancedModeButton.y + 30
+      );
+    }
+
+    ctx.font="18px sans-serif";
+    ctx.fillText("Credits", canvas.width / 2, creditsButton.y + 26);
+
+    if (state.menuCreditsOpen) {
+      ctx.fillStyle = "rgba(7, 16, 28, 0.76)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#15263f";
+      ctx.fillRect(canvas.width / 2 - 170, 70, 340, 220);
+      ctx.strokeStyle = "#f0f6ff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(canvas.width / 2 - 170, 70, 340, 220);
+
+      ctx.fillStyle = "white";
+      ctx.font = "bold 28px sans-serif";
+      ctx.textBaseline = "top";
+      ctx.fillText("Credits", canvas.width / 2, 92);
+
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#ffd7e8";
+      wrapText(
+        ctx,
+        "This game was made by EricOP, Asa, Thea, and Codex. Codex was our hard working robotic partner.",
+        canvas.width / 2,
+        138,
+        270,
+        28
+      );
+
+      ctx.fillStyle = "#2c89ff";
+      ctx.fillRect(
+        creditsCloseButton.x,
+        creditsCloseButton.y,
+        creditsCloseButton.w,
+        creditsCloseButton.h
+      );
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(
+        creditsCloseButton.x,
+        creditsCloseButton.y,
+        creditsCloseButton.w,
+        creditsCloseButton.h
+      );
+      ctx.fillStyle = "white";
+      ctx.font = "18px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        "Back",
+        creditsCloseButton.x + creditsCloseButton.w / 2,
+        creditsCloseButton.y + creditsCloseButton.h / 2
+      );
+    }
     return;
   }
 
@@ -1441,11 +1639,27 @@ function draw(){
     ctx.textAlign="center";
     ctx.fillText(
       state.win?"You spread kindness!":"You have lost!",
-      canvas.width/2,200
+      canvas.width/2,162
     );
 
+    if (state.win) {
+      ctx.font = "18px sans-serif";
+      ctx.fillStyle = "#ffd7e8";
+      wrapText(
+        ctx,
+        state.justUnlockedAdvanced
+          ? "Love and kindness are awesome to spread. Maybe we'll let you face some advanced grumpy people now."
+          : "Love and kindness are awesome to spread. Advanced grumpy people are waiting if you want a tougher run.",
+        canvas.width / 2,
+        208,
+        420,
+        26
+      );
+    }
+
+    ctx.fillStyle = "white";
     ctx.font="20px sans-serif";
-    ctx.fillText("Tap to return to menu",canvas.width/2,260);
+    ctx.fillText("Tap to return to menu",canvas.width/2,290);
     return;
   }
 
@@ -1576,9 +1790,12 @@ function draw(){
   ctx.font = "16px sans-serif";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText(`careCredits: ${state.careCredits}`,10,20);
-  ctx.fillText(`round: ${state.currentRound}/${state.totalRounds}`,10,40);
-  ctx.fillText(`missed hearts: ${state.escapedSad}/${state.maxEscaped}`,10,60);
+  ctx.fillText(`Care Credits: ${state.careCredits}`,10,20);
+  ctx.fillText(`Round: ${state.currentRound}/${state.totalRounds}`,10,40);
+  ctx.fillText(`Missed Hearts: ${state.escapedSad}/${state.maxEscaped}`,10,60);
+  if (state.advancedMode) {
+    ctx.fillText("ADV Mode", 10, 80);
+  }
 
   ctx.fillStyle = state.gameMode === "paused" ? "#40566f" : "#2f4762";
   ctx.fillRect(pauseButton.x, pauseButton.y, pauseButton.w, pauseButton.h);
