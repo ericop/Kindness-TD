@@ -88,11 +88,16 @@ const state = {
   escapedSad: 0,
   maxEscaped: 5,
   totalSpawned: 25,
+  currentRound: 1,
+  totalRounds: 10,
   gameOver: false,
   win: false,
   careCredits: 100,
   gameMode: "menu",
-  waveTextTimer: 0
+  waveTextTimer: 0,
+  pendingRound: 1,
+  instructionPages: [],
+  instructionPageIndex: 0
 };
 
 const START = { x: 0, y: Math.floor(grid.rows / 2) };
@@ -103,6 +108,70 @@ const HAPPY_HANGOUT = {
   width: 120,
   height: 70
 };
+const BASE_ROUND_SPAWN = 25;
+const ROUND_SPAWN_INCREASE = 10;
+const HEADPHONE_GRUMPY_INTERVAL = 6;
+const DOG_ALLERGY_GRUMPY_INTERVAL = 6;
+const DOG_ALLERGY_GRUMPY_OFFSET = 2;
+const instructionButton = {
+  x: canvas.width / 2 - 90,
+  y: canvas.height - 68,
+  w: 180,
+  h: 40
+};
+
+function getRoundSpawnCount(roundNumber) {
+  return BASE_ROUND_SPAWN + (roundNumber - 1) * ROUND_SPAWN_INCREASE;
+}
+
+function getInstructionPages(roundNumber) {
+  if (roundNumber === 1) {
+    return [
+      {
+        title: "Round 1",
+        body: "This game is all about kindness and spreading love to people who have grumpy hearts, so they can go hang out in the Happy Hangout. Build towers to do this."
+      }
+    ];
+  }
+
+  if (roundNumber === 2) {
+    return [
+      {
+        title: "Round 2",
+        body: "Headphone grumpies do not listen to Affirming Words and they tune out Glad Radio. Use hugs or other support to help them.",
+        icon: { hasHeadphones: true, hasDogAllergy: false }
+      }
+    ];
+  }
+
+  if (roundNumber === 3) {
+    return [
+      {
+        title: "Round 3",
+        body: "Some grumpies are allergic to therapy dogs. Their mask icon means TherapyDog towers will skip them, so use your other kindness towers instead.",
+        icon: { hasHeadphones: false, hasDogAllergy: true }
+      }
+    ];
+  }
+
+  return [];
+}
+
+function beginRoundFlow(roundNumber) {
+  const pages = getInstructionPages(roundNumber);
+
+  if (pages.length) {
+    state.pendingRound = roundNumber;
+    state.instructionPages = pages;
+    state.instructionPageIndex = 0;
+    state.gameMode = "instructions";
+    placementMenu.active = false;
+    return;
+  }
+
+  startRound(roundNumber);
+  state.gameMode = "playing";
+}
 
 function moveToHappyHangout(grumpy, dt) {
   const tx = HAPPY_HANGOUT.x + HAPPY_HANGOUT.width / 2;
@@ -112,8 +181,8 @@ function moveToHappyHangout(grumpy, dt) {
   const d = Math.hypot(dx, dy);
 
   if (d > 2) {
-    grumpy.x += (dx / d) * grumpy.speed * dt;
-    grumpy.y += (dy / d) * grumpy.speed * dt;
+    grumpy.x += (dx / d) * grumpy.speed * 2 * dt;
+    grumpy.y += (dy / d) * grumpy.speed * 2 * dt;
   }
 }
 
@@ -132,6 +201,44 @@ function refreshGrumpyPaths() {
       grumpy.pathIndex = 0;
     }
   });
+}
+
+function resetTowerTargets() {
+  hugTowers.forEach(tower => {
+    tower.target = null;
+  });
+
+  therapyDogs.forEach(tower => {
+    tower.targets = [];
+  });
+
+  affirmTowers.forEach(tower => {
+    tower.target = null;
+  });
+}
+
+function startRound(roundNumber) {
+  state.currentRound = roundNumber;
+  state.grumpies = [];
+  state.happyCount = 0;
+  state.totalSpawned = getRoundSpawnCount(roundNumber);
+  state.waveTextTimer = 2.5;
+  placementMenu.active = false;
+  textBubbles.length = 0;
+  resetTowerTargets();
+
+  for (let i = 0; i < state.totalSpawned; i++) {
+    const g = createGrumpy(i * 0.6, {
+      hasHeadphones:
+        roundNumber >= 2 &&
+        i % HEADPHONE_GRUMPY_INTERVAL === HEADPHONE_GRUMPY_INTERVAL - 1,
+      hasDogAllergy:
+        roundNumber >= 3 &&
+        i % DOG_ALLERGY_GRUMPY_INTERVAL === DOG_ALLERGY_GRUMPY_OFFSET
+    });
+    g.path = findPath(START, END) || [];
+    state.grumpies.push(g);
+  }
 }
 
 // =========================
@@ -217,35 +324,151 @@ const towerPixelArt = {
 ]
 };
 
+const menuGrumpies = [];
+
+function ensureMenuGrumpies() {
+  if (menuGrumpies.length) return;
+
+  menuGrumpies.push(
+    { x: 160, y: 250, vx: 18, vy: 7, hasHeadphones: false, hasDogAllergy: false },
+    { x: 240, y: 295, vx: 14, vy: -6, hasHeadphones: true, hasDogAllergy: false },
+    { x: 375, y: 260, vx: -16, vy: 5, hasHeadphones: false, hasDogAllergy: true },
+    { x: 520, y: 300, vx: 15, vy: -5, hasHeadphones: true, hasDogAllergy: false },
+    { x: 610, y: 248, vx: -17, vy: 6, hasHeadphones: false, hasDogAllergy: false }
+  );
+}
+
+function updateMenuGrumpies(dt) {
+  ensureMenuGrumpies();
+
+  const minX = 90;
+  const maxX = canvas.width - 90;
+  const minY = 218;
+  const maxY = canvas.height - 34;
+
+  menuGrumpies.forEach(grumpy => {
+    grumpy.x += grumpy.vx * dt;
+    grumpy.y += grumpy.vy * dt;
+
+    if (grumpy.x <= minX || grumpy.x >= maxX) {
+      grumpy.vx *= -1;
+      grumpy.x = Math.max(minX, Math.min(maxX, grumpy.x));
+    }
+
+    if (grumpy.y <= minY || grumpy.y >= maxY) {
+      grumpy.vy *= -1;
+      grumpy.y = Math.max(minY, Math.min(maxY, grumpy.y));
+    }
+  });
+}
+
+function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
+  ctx.fillStyle=grumpy.isHappy?'gold':'gray';
+  ctx.beginPath();
+  ctx.arc(grumpy.x,grumpy.y,10,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(grumpy.x - 3, grumpy.y - 2, 1.2, 0, Math.PI * 2);
+  ctx.arc(grumpy.x + 3, grumpy.y - 2, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (grumpy.isHappy) {
+    ctx.arc(grumpy.x, grumpy.y + 2, 4, 0.15 * Math.PI, 0.85 * Math.PI);
+  } else {
+    ctx.arc(grumpy.x, grumpy.y + 7, 4, 1.15 * Math.PI, 1.85 * Math.PI);
+  }
+  ctx.stroke();
+
+  if (showHealthBar) {
+    ctx.fillStyle='red';
+    ctx.fillRect(grumpy.x-10,grumpy.y-18,20,3);
+
+    ctx.fillStyle='lime';
+    ctx.fillRect(grumpy.x-10,grumpy.y-18,20*(1-grumpy.sad/grumpy.maxSad),3);
+  }
+
+  if (grumpy.hasHeadphones) {
+    ctx.strokeStyle = 'rgba(190, 120, 255, 0.65)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(grumpy.x, grumpy.y - 4, 11, Math.PI, 2 * Math.PI);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#5c2d91';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(grumpy.x, grumpy.y - 4, 8, Math.PI, 2 * Math.PI);
+    ctx.stroke();
+
+    ctx.fillStyle = '#8750c7';
+    ctx.fillRect(grumpy.x - 14, grumpy.y - 2, 6, 8);
+    ctx.fillRect(grumpy.x + 8, grumpy.y - 2, 6, 8);
+
+    ctx.fillStyle = '#b28ae6';
+    ctx.fillRect(grumpy.x - 13, grumpy.y, 2, 4);
+    ctx.fillRect(grumpy.x + 11, grumpy.y, 2, 4);
+  }
+
+  if (grumpy.hasDogAllergy) {
+    ctx.fillStyle = '#f5f7fa';
+    ctx.fillRect(grumpy.x - 6, grumpy.y + 1, 12, 5);
+
+    ctx.fillStyle = '#d9dee5';
+    ctx.fillRect(grumpy.x - 4, grumpy.y + 2, 8, 1);
+
+    ctx.strokeStyle = '#b8c2cc';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(grumpy.x - 6, grumpy.y + 2);
+    ctx.lineTo(grumpy.x - 10, grumpy.y + 1);
+    ctx.moveTo(grumpy.x + 6, grumpy.y + 2);
+    ctx.lineTo(grumpy.x + 10, grumpy.y + 1);
+    ctx.stroke();
+  }
+
+  if(grumpy.isHugged){
+    ctx.strokeStyle='pink';
+    const t=performance.now()*0.005;
+    for(let i=0;i<2;i++){
+      const a=t+i*Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(grumpy.x+Math.cos(a)*12,grumpy.y+Math.sin(a)*12);
+      ctx.lineTo(grumpy.x+Math.cos(a+1)*12,grumpy.y+Math.sin(a+1)*12);
+      ctx.stroke();
+    }
+  }
+}
+
 function startGame() {
-  state.grumpies = [];
-  state.happyCount = 0;
   state.escapedSad = 0;
   state.gameOver = false;
   state.win = false;
   state.careCredits = 100;
+  state.currentRound = 1;
+  state.pendingRound = 1;
+  state.instructionPages = [];
+  state.instructionPageIndex = 0;
 
   hugTowers.length = 0;
   therapyDogs.length = 0;
   affirmTowers.length = 0;
   radioTowers.length = 0;
   grid.blocked.clear();
-
-  for (let i=0;i<state.totalSpawned;i++) {
-    const g = createGrumpy(i*0.6);
-    g.path = findPath(START, END) || [];
-    state.grumpies.push(g);
-  }
-
-  state.waveTextTimer = 2.5;
-  state.gameMode = "playing";
-  placementMenu.active = false;
+  textBubbles.length = 0;
+  beginRoundFlow(1);
 }
 
 // =========================
 // GRUMPY
 // =========================
-function createGrumpy(delay=0){
+function createGrumpy(delay=0, options = {}){
+  const hasHeadphones = !!options.hasHeadphones;
+  const hasDogAllergy = !!options.hasDogAllergy;
   return {
     x: START.x*GRID_SIZE+20,
     y: START.y*GRID_SIZE+20,
@@ -255,7 +478,13 @@ function createGrumpy(delay=0){
     delay,
     active:false,
     isHappy:false,
+    hasHeadphones,
+    hasDogAllergy,
+    allergicToDogs: hasDogAllergy,
+    ignoresAffirmations: hasHeadphones,
+    ignoresRadio: hasHeadphones,
     inHappyHangout:false,
+    rewardGranted:false,
     reachedEnd:false,
     isHugged:false,
     path:[],
@@ -272,6 +501,20 @@ function createGrumpy(delay=0){
         const tx = HAPPY_HANGOUT.x + HAPPY_HANGOUT.width / 2;
         const ty = HAPPY_HANGOUT.y + HAPPY_HANGOUT.height / 2;
         this.inHappyHangout = Math.hypot(tx - this.x, ty - this.y) <= 6;
+        if (this.inHappyHangout && !this.rewardGranted) {
+          this.rewardGranted = true;
+          state.careCredits += 10;
+          textBubbles.push({
+          text: "+10 ❤️",
+            x: this.x,
+            y: this.y - 20,
+            target: null,
+            life: 1,
+            speed: 0,
+            hit: false,
+            style: "reward"
+          });
+        }
         return;
       }
 
@@ -295,44 +538,7 @@ function createGrumpy(delay=0){
     },
 
     draw(ctx){
-      ctx.fillStyle=this.isHappy?'gold':'gray';
-      ctx.beginPath();
-      ctx.arc(this.x,this.y,10,0,Math.PI*2);
-      ctx.fill();
-
-      ctx.fillStyle = '#111';
-      ctx.beginPath();
-      ctx.arc(this.x - 3, this.y - 2, 1.2, 0, Math.PI * 2);
-      ctx.arc(this.x + 3, this.y - 2, 1.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#111';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      if (this.isHappy) {
-        ctx.arc(this.x, this.y + 2, 4, 0.15 * Math.PI, 0.85 * Math.PI);
-      } else {
-        ctx.arc(this.x, this.y + 7, 4, 1.15 * Math.PI, 1.85 * Math.PI);
-      }
-      ctx.stroke();
-
-      ctx.fillStyle='red';
-      ctx.fillRect(this.x-10,this.y-18,20,3);
-
-      ctx.fillStyle='lime';
-      ctx.fillRect(this.x-10,this.y-18,20*(1-this.sad/this.maxSad),3);
-
-      if(this.isHugged){
-        ctx.strokeStyle='pink';
-        const t=performance.now()*0.005;
-        for(let i=0;i<2;i++){
-          const a=t+i*Math.PI;
-          ctx.beginPath();
-          ctx.moveTo(this.x+Math.cos(a)*12,this.y+Math.sin(a)*12);
-          ctx.lineTo(this.x+Math.cos(a+1)*12,this.y+Math.sin(a+1)*12);
-          ctx.stroke();
-        }
-      }
+      drawGrumpySprite(ctx, this, true);
     }
   };
 }
@@ -352,13 +558,13 @@ function applyCareCredits(dt){
   radioTowers.forEach(t=>{
     state.grumpies.forEach(g=>{
       if(!g.active||g.isHappy) return;
+      if(g.ignoresRadio) return;
       if(Math.hypot(g.x-t.x,g.y-t.y)<t.radius){
         g.sad-=20*dt;
         if(g.sad<=0){
           g.sad=0;
           g.isHappy=true;
           state.happyCount++;
-          state.careCredits+=10;
         }
       }
     });
@@ -387,7 +593,6 @@ function applyHugs(dt){
         g.isHappy=true;
         g.isHugged=false;
         state.happyCount++;
-        state.careCredits+=10;
         t.target=null;
       }
     }
@@ -396,10 +601,11 @@ function applyHugs(dt){
 
 function applyTherapyDogs(dt){
   therapyDogs.forEach(d=>{
-    d.targets=d.targets.filter(g=>!g.isHappy);
+    d.targets=d.targets.filter(g=>!g.isHappy && !g.allergicToDogs);
 
     const candidates=state.grumpies.filter(g=>{
       if(!g.active||g.isHappy) return false;
+      if(g.allergicToDogs) return false;
       if(d.targets.includes(g)) return false;
       return Math.hypot(g.x-d.x,g.y-d.y)<d.range;
     });
@@ -419,7 +625,6 @@ function applyTherapyDogs(dt){
         g.isHappy=true;
         g.isHugged=false;
         state.happyCount++;
-        state.careCredits+=10;
       }
     });
   });
@@ -446,6 +651,7 @@ function applyAffirmations(dt){
     if(!t.target){
       for(let g of state.grumpies){
         if(!g.active||g.isHappy) continue;
+        if(g.ignoresAffirmations) continue;
         if(Math.hypot(g.x-t.x,g.y-t.y)<t.range){
           t.target=g;
           break;
@@ -461,7 +667,6 @@ function applyAffirmations(dt){
         g.sad=0;
         g.isHappy=true;
         state.happyCount++;
-        state.careCredits+=10;
         t.target=null;
       }
 
@@ -583,6 +788,24 @@ function getPlacementMenuButtonAt(x, y) {
   return null;
 }
 
+function getInstructionButtonLabel() {
+  const isLastPage =
+    state.instructionPageIndex >= state.instructionPages.length - 1;
+  return isLastPage ? `Start Round ${state.pendingRound}` : "Next";
+}
+
+function advanceInstructions() {
+  if (state.instructionPageIndex < state.instructionPages.length - 1) {
+    state.instructionPageIndex++;
+    return;
+  }
+
+  startRound(state.pendingRound);
+  state.instructionPages = [];
+  state.instructionPageIndex = 0;
+  state.gameMode = "playing";
+}
+
 function handleInput(clientX,clientY,click=false){
 
 if (state.gameMode === "menu") {
@@ -602,6 +825,23 @@ if (state.gameMode === "menu") {
   }
   return;
 }
+
+  if (state.gameMode === "instructions") {
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    if (
+      click &&
+      x >= instructionButton.x &&
+      x <= instructionButton.x + instructionButton.w &&
+      y >= instructionButton.y &&
+      y <= instructionButton.y + instructionButton.h
+    ) {
+      advanceInstructions();
+    }
+    return;
+  }
 
   if(state.gameMode==="gameover"){
     placementMenu.active = false;
@@ -708,6 +948,13 @@ function loop(t){
 }
 
 function update(dt){
+  if(state.gameMode==="menu"){
+    updateMenuGrumpies(dt);
+    return;
+  }
+
+  if(state.gameMode==="instructions") return;
+
   if(state.gameMode!=="playing") return;
 
   state.grumpies.forEach(g=>g.update(dt));
@@ -724,8 +971,12 @@ function update(dt){
   }
 
   if(state.happyCount===state.totalSpawned){
-    state.gameMode="gameover";
-    state.win=true;
+    if (state.currentRound >= state.totalRounds) {
+      state.gameMode="gameover";
+      state.win=true;
+    } else {
+      beginRoundFlow(state.currentRound + 1);
+    }
   }
 
   if(state.waveTextTimer>0){
@@ -758,10 +1009,35 @@ function drawPixelArtWithBounce(ctx, x, y, pixels, size=4, tOffset=0, amp=2, spe
   });
 }
 
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(" ");
+  let line = "";
+  let currentY = y;
+
+  for (let i = 0; i < words.length; i++) {
+    const testLine = line ? `${line} ${words[i]}` : words[i];
+    const width = ctx.measureText(testLine).width;
+
+    if (width > maxWidth && line) {
+      ctx.fillText(line, x, currentY);
+      line = words[i];
+      currentY += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+
+  if (line) {
+    ctx.fillText(line, x, currentY);
+  }
+}
+
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   if(state.gameMode==="menu"){
+    ensureMenuGrumpies();
+
     ctx.fillStyle="#10233f";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -790,6 +1066,17 @@ function draw(){
     drawPixelArtWithBounce(ctx, 430, 178, towerPixelArt.affirm, 10, 1.8, 2, 0.0045);
     drawPixelArtWithBounce(ctx, 600, 172, towerPixelArt.radio, 10, 2.6, 2, 0.0055);
 
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.lineWidth = 18;
+    ctx.beginPath();
+    ctx.moveTo(50, 272);
+    ctx.lineTo(canvas.width - 50, 272);
+    ctx.moveTo(canvas.width / 2, 205);
+    ctx.lineTo(canvas.width / 2, canvas.height - 18);
+    ctx.stroke();
+
+    menuGrumpies.forEach(grumpy => drawGrumpySprite(ctx, grumpy, false));
+
     ctx.fillStyle="rgba(255,255,255,0.12)";
     ctx.fillRect(70,235,640,6);
 
@@ -812,6 +1099,93 @@ function draw(){
     ctx.fillStyle="white";
     ctx.font="20px sans-serif";
     ctx.fillText("Start Game",canvas.width/2,startButton.y+32);
+    return;
+  }
+
+  if (state.gameMode === "instructions") {
+    const page =
+      state.instructionPages[state.instructionPageIndex] || {
+        title: "",
+        body: ""
+      };
+
+    ctx.fillStyle = "#0b1630";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(70, 34, canvas.width - 140, canvas.height - 88);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(70, 34, canvas.width - 140, canvas.height - 88);
+
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.font = "bold 30px sans-serif";
+    ctx.fillText(page.title, canvas.width / 2, 58);
+
+    ctx.font = "17px sans-serif";
+    ctx.fillStyle = "#e7eefc";
+    wrapText(
+      ctx,
+      page.body,
+      canvas.width / 2,
+      112,
+      500,
+      26
+    );
+
+    if (page.icon) {
+      drawGrumpySprite(
+        ctx,
+        {
+          x: canvas.width / 2,
+          y: 245,
+          sad: 100,
+          maxSad: 100,
+          isHappy: false,
+          isHugged: false,
+          hasHeadphones: !!page.icon.hasHeadphones,
+          hasDogAllergy: !!page.icon.hasDogAllergy
+        },
+        false
+      );
+    }
+
+    ctx.fillStyle = "#2c89ff";
+    ctx.fillRect(
+      instructionButton.x,
+      instructionButton.y,
+      instructionButton.w,
+      instructionButton.h
+    );
+
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      instructionButton.x,
+      instructionButton.y,
+      instructionButton.w,
+      instructionButton.h
+    );
+
+    ctx.fillStyle = "white";
+    ctx.font = "18px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      getInstructionButtonLabel(),
+      instructionButton.x + instructionButton.w / 2,
+      instructionButton.y + instructionButton.h / 2
+    );
+
+    ctx.font = "14px sans-serif";
+    ctx.fillStyle = "#bfd4ff";
+    ctx.fillText(
+      `Page ${state.instructionPageIndex + 1}/${state.instructionPages.length}`,
+      canvas.width / 2,
+      instructionButton.y - 24
+    );
     return;
   }
 
@@ -914,6 +1288,15 @@ function draw(){
   state.grumpies.forEach(g=>g.draw(ctx));
 
   textBubbles.forEach(b=>{
+    if (b.style === "reward") {
+      ctx.fillStyle = "#ff7ab6";
+      ctx.font = "bold 16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(b.text, b.x, b.y);
+      return;
+    }
+
     const bubbleWidth=Math.max(64,b.text.length*7+18);
     const bubbleHeight=24;
 
@@ -945,7 +1328,8 @@ function draw(){
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillText(`careCredits: ${state.careCredits}`,10,20);
-  ctx.fillText(`selected: ${selectedTower}`,10,40);
+  ctx.fillText(`round: ${state.currentRound}/${state.totalRounds}`,10,40);
+  ctx.fillText(`+${ROUND_SPAWN_INCREASE} grumpies each round`,10,60);
 
   if (placementMenu.active) {
     const buttons = getPlacementMenuButtons(
@@ -981,9 +1365,17 @@ function draw(){
     ctx.font="24px sans-serif";
     ctx.textAlign="center";
     ctx.fillText(
-      "Level 1: 25 Grumpies Incoming!",
+      `Round ${state.currentRound}: ${state.totalSpawned} Grumpies Incoming!`,
       canvas.width/2,60
     );
+    if (state.currentRound < state.totalRounds) {
+      ctx.font = "16px sans-serif";
+      ctx.fillText(
+        `Next round adds +${ROUND_SPAWN_INCREASE} more`,
+        canvas.width / 2,
+        86
+      );
+    }
   }
 }
 
