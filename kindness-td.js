@@ -139,7 +139,7 @@ function refreshGrumpyPaths() {
 // =========================
 const startButton = {
   x: canvas.width/2 - 100,
-  y: canvas.height/2,
+  y: canvas.height/2 + 55,
   w: 200,
   h: 50
 };
@@ -157,6 +157,65 @@ const buildMenuButtons = [
   { label: "AffirmingWords", towerType: "affirm", direction: "down" },
   { label: "GladRadio", towerType: "radio", direction: "left" }
 ];
+
+// =========================
+// PIXEL ART DEFINITIONS
+// Each object in the array represents a "pixel block".
+// x/y = position in mini grid, c = color
+// Comments explain what part of the tower it is
+// =========================
+
+const towerPixelArt = {
+  hug: [
+    // A more defined heart shape with a clear "reaching arm" silhouette
+    { x: 1, y: 0, c: "#ff9dbb" }, { x: 3, y: 0, c: "#ff9dbb" }, // Top of heart
+    { x: 0, y: 1, c: "#ffcf7d" }, { x: 1, y: 1, c: "#ff9dbb" }, { x: 2, y: 1, c: "#ff9dbb" }, { x: 3, y: 1, c: "#ff9dbb" }, { x: 4, y: 1, c: "#ffcf7d" }, // Reaching hands/arms
+    { x: 1, y: 2, c: "#ff9dbb" }, { x: 2, y: 2, c: "#ff9dbb" }, { x: 3, y: 2, c: "#ff9dbb" }, // Body
+    { x: 1, y: 3, c: "#ff9dbb" }, { x: 2, y: 3, c: "#ff9dbb" }, { x: 3, y: 3, c: "#ff9dbb" }, // Lower body
+    { x: 2, y: 4, c: "#ff9dbb" }  // Heart point/base
+  ],
+
+  dog: [
+    // Focused on the "Head and Ears" silhouette for instant recognition
+    { x: 0, y: 0, c: "#b86b2b" }, { x: 4, y: 0, c: "#b86b2b" }, // High floppy ears
+    { x: 0, y: 1, c: "#b86b2b" }, { x: 1, y: 1, c: "#f0c27b" }, { x: 2, y: 1, c: "#f0c27b" }, { x: 3, y: 1, c: "#f0c27b" }, { x: 4, y: 1, c: "#b86b2b" }, // Face + Ear length
+    { x: 1, y: 2, c: "#f0c27b" }, { x: 2, y: 2, c: "#000000" }, { x: 3, y: 2, c: "#f0c27b" }, // Eyes/Nose area
+    { x: 1, y: 3, c: "#c68625" }, { x: 2, y: 3, c: "#c68625" }, { x: 3, y: 3, c: "#c68625" }, // Muzzle
+    { x: 1, y: 4, c: "#a1581c" }, { x: 3, y: 4, c: "#a1581c" }  // Bright brown collar base
+  ],
+
+  affirm: [
+  // Tip of the cone
+  { x: 2, y: 0, c: "#ffffff" },
+
+  // Upper-middle of cone
+  { x: 1, y: 1, c: "#cccccc" }, { x: 2, y: 1, c: "#ffffff" }, { x: 3, y: 1, c: "#cccccc" },
+
+  // Base of cone
+  { x: 0, y: 2, c: "#cccccc" }, { x: 1, y: 2, c: "#ffffff" }, { x: 2, y: 2, c: "#ffffff" }, { x: 3, y: 2, c: "#ffffff" }, { x: 4, y: 2, c: "#cccccc" },
+
+  // Handle (open / transparent)
+    { x: 2, y: 3, c: "#999" }, { x: 4, y: 3, c: "#999" },  // Bright brown collar base
+
+  // Handle bottom left for visual balance
+    { x: 2, y: 4, c: "#999" }, { x: 3, y: 4, c: "#999" } // Muzzle
+
+],
+
+  radio: [
+    // Classic "Boombox" look with a central speaker and top handle
+  // Top row: handle
+  { x: 1, y: 0, c: "#444444" }, { x: 2, y: 0, c: "#444444" }, { x: 3, y: 0, c: "#444444" }, 
+  // Second row: top corners + handle base
+  { x: 0, y: 1, c: "#000000" },  { x: 4, y: 1, c: "#000000" }, 
+  // Middle row: dial or tuner
+  { x: 0, y: 2, c: "#000000" }, { x: 1, y: 2, c: "#999999" }, { x: 2, y: 2, c: "#ffffff" }, { x: 3, y: 2, c: "#999999" }, { x: 4, y: 2, c: "#000000" }, 
+  // Fourth row: speaker
+  { x: 0, y: 3, c: "#000000" }, { x: 1, y: 3, c: "#444444" }, { x: 2, y: 3, c: "#444444" }, { x: 3, y: 3, c: "#444444" }, { x: 4, y: 3, c: "#000000" }, 
+  // Bottom row: base/support
+  { x: 0, y: 4, c: "#000000" },{ x: 1, y: 4, c: "#000000" }, { x: 2, y: 4, c: "#000000" }, { x: 3, y: 4, c: "#000000" }, { x: 4, y: 4, c: "#000000" }
+]
+};
 
 function startGame() {
   state.grumpies = [];
@@ -658,20 +717,81 @@ function update(dt){
   }
 }
 
+function drawPixelArt(ctx, x, y, pixels, size=4) {
+  pixels.forEach(p => {
+    ctx.fillStyle = p.c;
+    ctx.fillRect(
+      x + p.x * size,
+      y + p.y * size,
+      size,
+      size
+    );
+  });
+}
+
+function drawPixelArtWithBounce(ctx, x, y, pixels, size=4, tOffset=0, amp=2, speed=0.005){
+  const offsetY = Math.sin(performance.now()*speed + tOffset) * amp;
+  pixels.forEach(p => {
+    ctx.fillStyle = p.c;
+    ctx.fillRect(
+      x + p.x * size,
+      y + p.y * size + offsetY,
+      size,
+      size
+    );
+  });
+}
+
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   if(state.gameMode==="menu"){
-    ctx.fillStyle="black";
+    ctx.fillStyle="#10233f";
     ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.fillStyle="#1d4f7a";
+    ctx.fillRect(0,0,canvas.width,canvas.height*0.62);
+
+    ctx.fillStyle="#254a2d";
+    ctx.fillRect(0,canvas.height*0.62,canvas.width,canvas.height*0.38);
+
+    ctx.fillStyle="rgba(255,255,255,0.18)";
+    ctx.beginPath();
+    ctx.arc(130,70,36,0,Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(170,60,26,0,Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(610,82,28,0,Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(645,72,22,0,Math.PI*2);
+    ctx.fill();
+
+    drawPixelArtWithBounce(ctx, 95, 175, towerPixelArt.hug, 10, 0.2, 2, 0.004);
+    drawPixelArtWithBounce(ctx, 250, 170, towerPixelArt.dog, 10, 1.0, 2, 0.005);
+    drawPixelArtWithBounce(ctx, 430, 178, towerPixelArt.affirm, 10, 1.8, 2, 0.0045);
+    drawPixelArtWithBounce(ctx, 600, 172, towerPixelArt.radio, 10, 2.6, 2, 0.0055);
+
+    ctx.fillStyle="rgba(255,255,255,0.12)";
+    ctx.fillRect(70,235,640,6);
 
     ctx.fillStyle="white";
     ctx.font="bold 48px sans-serif";
     ctx.textAlign="center";
-    ctx.fillText("KINDNESS TD",canvas.width/2,150);
+    ctx.fillText("KINDNESS TD",canvas.width/2,105);
 
-    ctx.fillStyle="blue";
+    ctx.font="18px sans-serif";
+    ctx.fillStyle="#ffd9f4";
+    ctx.fillText("Help grumpies feel better",canvas.width/2,138);
+
+    ctx.fillStyle="#2c89ff";
     ctx.fillRect(startButton.x,startButton.y,startButton.w,startButton.h);
+
+    ctx.strokeStyle="white";
+    ctx.lineWidth=3;
+    ctx.strokeRect(startButton.x,startButton.y,startButton.w,startButton.h);
 
     ctx.fillStyle="white";
     ctx.font="20px sans-serif";
@@ -725,37 +845,54 @@ function draw(){
     HAPPY_HANGOUT.y + HAPPY_HANGOUT.height / 2
   );
 
-  hugTowers.forEach(t=>{
-    ctx.fillStyle='brown';
-    ctx.beginPath();
-    ctx.arc(t.x,t.y,12,0,Math.PI*2);
-    ctx.fill();
+  // hugTowers.forEach(t=>{
+  //   ctx.fillStyle='brown';
+  //   ctx.beginPath();
+  //   ctx.arc(t.x,t.y,12,0,Math.PI*2);
+  //   ctx.fill();
+  // });
+  hugTowers.forEach((t,i)=>{
+    drawPixelArtWithBounce(ctx, t.x - 12, t.y - 12, towerPixelArt.hug, 6, i*0.5, 2, 0.006);
   });
 
-  therapyDogs.forEach(d=>{
-    ctx.fillStyle='orange';
-    ctx.beginPath();
-    ctx.arc(d.x,d.y,10,0,Math.PI*2);
-    ctx.fill();
+  // therapyDogs.forEach(d=>{
+  //   ctx.fillStyle='orange';
+  //   ctx.beginPath();
+  //   ctx.arc(d.x,d.y,10,0,Math.PI*2);
+  //   ctx.fill();
+  // });
+  therapyDogs.forEach((d,i)=>{
+    drawPixelArtWithBounce(ctx, d.x - 12, d.y - 12, towerPixelArt.dog, 6, i*0.3, 1.5, 0.007);
   });
 
-  affirmTowers.forEach(t=>{
-    ctx.fillStyle='purple';
-    ctx.beginPath();
-    ctx.arc(t.x,t.y,10,0,Math.PI*2);
-    ctx.fill();
+  // affirmTowers.forEach(t=>{
+  //   ctx.fillStyle='purple';
+  //   ctx.beginPath();
+  //   ctx.arc(t.x,t.y,10,0,Math.PI*2);
+  //   ctx.fill();
+  // });
+  affirmTowers.forEach((t,i)=>{
+    drawPixelArtWithBounce(ctx, t.x - 12, t.y - 12, towerPixelArt.affirm, 6, i*0.2, 1.8, 0.008);
   });
 
-  radioTowers.forEach(t=>{
-    ctx.strokeStyle='cyan';
+  // radioTowers.forEach(t=>{
+  //   ctx.strokeStyle='cyan';
+  //   ctx.beginPath();
+  //   ctx.arc(t.x,t.y,t.radius,0,Math.PI*2);
+  //   ctx.stroke();
+
+  //   ctx.fillStyle='blue';
+  //   ctx.beginPath();
+  //   ctx.arc(t.x,t.y,10,0,Math.PI*2);
+  //   ctx.fill();
+  // });
+  radioTowers.forEach((t,i)=>{
+    ctx.strokeStyle='rgba(0,255,255,0.3)';
     ctx.beginPath();
     ctx.arc(t.x,t.y,t.radius,0,Math.PI*2);
     ctx.stroke();
 
-    ctx.fillStyle='blue';
-    ctx.beginPath();
-    ctx.arc(t.x,t.y,10,0,Math.PI*2);
-    ctx.fill();
+    drawPixelArtWithBounce(ctx, t.x - 12, t.y - 12, towerPixelArt.radio, 6, i*0.4, 2.5, 0.005);
   });
 
   state.grumpies.forEach(g=>g.draw(ctx));
