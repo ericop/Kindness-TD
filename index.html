@@ -15,12 +15,17 @@
       align-items: center;
       gap: 5px;
       padding: 5px;
+      touch-action: manipulation;
     }
 
     canvas {
       border: 2px solid gray;
       background: #1f2a44;
+      width: min(100%, 780px);
+      height: auto;
       max-width: 100%;
+      display: block;
+      touch-action: none;
     }
   </style>
 </head>

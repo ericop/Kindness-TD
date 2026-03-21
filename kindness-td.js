@@ -7,6 +7,10 @@ document.body.appendChild(canvas);
 
 canvas.width = 780;
 canvas.height = 360;
+canvas.style.width = "100%";
+canvas.style.maxWidth = `${canvas.width}px`;
+canvas.style.height = "auto";
+canvas.style.touchAction = "none";
 
 let last = 0;
 
@@ -913,6 +917,7 @@ function updateTextBubbles(dt){
 let mouse={x:0,y:0};
 let preview={cx:0,cy:0,valid:true};
 let selectedTower="hug";
+const prefersCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
 const placementMenu = {
   active: false,
   cx: 0,
@@ -926,8 +931,8 @@ function clamp(value, min, max) {
 function getPlacementMenuButtons(cx, cy) {
   const centerX = cx * GRID_SIZE + GRID_SIZE / 2;
   const centerY = cy * GRID_SIZE + GRID_SIZE / 2;
-  const width = 100;
-  const height = 28;
+  const width = prefersCoarsePointer ? 124 : 100;
+  const height = prefersCoarsePointer ? 40 : 28;
 
   return buildMenuButtons.map(button => {
     let x = centerX - width / 2;
@@ -999,20 +1004,39 @@ function returnToMainMenu() {
   state.gameMode = "menu";
 }
 
-function handleInput(clientX,clientY,click=false){
+function getCanvasPoint(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  };
+}
+
+function updatePreviewAtCell(cx, cy) {
+  preview.cx = cx;
+  preview.cy = cy;
+
+  const key = cellKey(cx, cy);
+  const isInsideGrid = cx >= 0 && cy >= 0 && cx < grid.cols && cy < grid.rows;
+  const isSpawnCell = cx === START.x && cy === START.y;
+
+  if (!isInsideGrid || isSpawnCell || grid.blocked.has(key)) {
+    preview.valid = false;
+    return;
+  }
+
+  grid.blocked.add(key);
+  preview.valid = !!findPath(START, END);
+  grid.blocked.delete(key);
+}
+
+function handleInput(x,y,click=false){
 
 if (state.gameMode === "menu") {
-  const rect = canvas.getBoundingClientRect();
-  const x = clientX - rect.left;
-  const y = clientY - rect.top;
-
   if (click) {
-    if (
-      x >= startButton.x &&
-      x <= startButton.x + startButton.w &&
-      y >= startButton.y &&
-      y <= startButton.y + startButton.h
-    ) {
+    if (pointInRect(x, y, startButton)) {
       startGame();
     }
   }
@@ -1020,27 +1044,13 @@ if (state.gameMode === "menu") {
 }
 
   if (state.gameMode === "instructions") {
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
-    if (
-      click &&
-      x >= instructionButton.x &&
-      x <= instructionButton.x + instructionButton.w &&
-      y >= instructionButton.y &&
-      y <= instructionButton.y + instructionButton.h
-    ) {
+    if (click && pointInRect(x, y, instructionButton)) {
       advanceInstructions();
     }
     return;
   }
 
   if (state.gameMode === "paused") {
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
     if (click && pointInRect(x, y, pauseContinueButton)) {
       resumeFromPause();
       return;
@@ -1058,10 +1068,6 @@ if (state.gameMode === "menu") {
     return;
   }
 
-  const rect=canvas.getBoundingClientRect();
-  const x=clientX-rect.left;
-  const y=clientY-rect.top;
-
   if (click && pointInRect(x, y, pauseButton)) {
     placementMenu.active = false;
     state.pausedFromRound = state.currentRound;
@@ -1073,8 +1079,7 @@ if (state.gameMode === "menu") {
   const {cx,cy}=getCell(x,y);
 
   if (placementMenu.active) {
-    preview.cx = placementMenu.cx;
-    preview.cy = placementMenu.cy;
+    updatePreviewAtCell(placementMenu.cx, placementMenu.cy);
 
     const menuButton = getPlacementMenuButtonAt(x, y);
     if (menuButton) {
@@ -1093,18 +1098,7 @@ if (state.gameMode === "menu") {
     }
   }
 
-  preview.cx=cx; preview.cy=cy;
-
-  const key=cellKey(cx,cy);
-  const isSpawnCell = cx === START.x && cy === START.y;
-
-  if(isSpawnCell || grid.blocked.has(key)){
-    preview.valid=false;
-  } else {
-    grid.blocked.add(key);
-    preview.valid=!!findPath(START,END);
-    grid.blocked.delete(key);
-  }
+  updatePreviewAtCell(cx, cy);
 
   if(click && preview.valid){
     placementMenu.active = true;
@@ -1138,17 +1132,17 @@ function placeTower(cx,cy,towerType=selectedTower){
   refreshGrumpyPaths();
 }
 
-canvas.addEventListener('mousemove',e=>handleInput(e.clientX,e.clientY,false));
-canvas.addEventListener('click',e=>handleInput(e.clientX,e.clientY,true));
-
-canvas.addEventListener('touchmove',e=>{
-  e.preventDefault();
-  handleInput(e.touches[0].clientX,e.touches[0].clientY,false);
+canvas.addEventListener("pointermove", e => {
+  const point = getCanvasPoint(e.clientX, e.clientY);
+  if (e.pointerType === "mouse" || placementMenu.active) {
+    handleInput(point.x, point.y, false);
+  }
 });
 
-canvas.addEventListener('touchstart',e=>{
+canvas.addEventListener("pointerdown", e => {
   e.preventDefault();
-  handleInput(e.touches[0].clientX,e.touches[0].clientY,true);
+  const point = getCanvasPoint(e.clientX, e.clientY);
+  handleInput(point.x, point.y, true);
 });
 
 window.addEventListener('keydown', e=>{
