@@ -1,161 +1,4 @@
-// =========================
-// SETUP
-// =========================
-const canvas = document.createElement('canvas');
-const ctx = canvas.getContext('2d');
-const gameMount = document.getElementById("gameMount");
-const fullscreenButtonEl = document.getElementById("fullscreenButton");
-gameMount.appendChild(canvas);
-
-canvas.width = 780;
-canvas.height = 360;
-canvas.style.width = "100%";
-canvas.style.height = "auto";
-canvas.style.touchAction = "none";
-
-let last = 0;
-let pseudoFullscreen = false;
-
-function updateFullscreenUi() {
-  const isFullscreen = !!document.fullscreenElement || pseudoFullscreen;
-  document.body.classList.toggle("fullscreen-mode", isFullscreen);
-  if (fullscreenButtonEl) {
-    fullscreenButtonEl.textContent = isFullscreen ? "Exit Full Screen" : "Full Screen";
-  }
-}
-
-async function toggleFullscreen() {
-  if (!document.fullscreenElement && !pseudoFullscreen) {
-    if (document.documentElement.requestFullscreen) {
-      try {
-        await document.documentElement.requestFullscreen();
-        return;
-      } catch (error) {
-        pseudoFullscreen = true;
-        updateFullscreenUi();
-        return;
-      }
-    }
-
-    pseudoFullscreen = true;
-    updateFullscreenUi();
-    return;
-  }
-
-  if (document.fullscreenElement && document.exitFullscreen) {
-    await document.exitFullscreen();
-    return;
-  }
-
-  pseudoFullscreen = false;
-  updateFullscreenUi();
-}
-
-if (fullscreenButtonEl) {
-  fullscreenButtonEl.addEventListener("click", () => {
-    toggleFullscreen();
-  });
-}
-
-document.addEventListener("fullscreenchange", () => {
-  pseudoFullscreen = false;
-  updateFullscreenUi();
-});
-
-// =========================
-// GRID + PATHFINDING
-// =========================
-const GRID_SIZE = 40;
-
-const grid = {
-  cols: Math.floor(canvas.width / GRID_SIZE),
-  rows: Math.floor(canvas.height / GRID_SIZE),
-  blocked: new Set()
-};
-
-function getCell(x, y) {
-  return {
-    cx: Math.floor(x / GRID_SIZE),
-    cy: Math.floor(y / GRID_SIZE)
-  };
-}
-
-function cellKey(cx, cy) {
-  return cx + "," + cy;
-}
-
-function findPath(start, end) {
-  const open = [start];
-  const cameFrom = {};
-  const cost = {};
-  const key = (x,y) => x+","+y;
-
-  cost[key(start.x,start.y)] = 0;
-
-  while (open.length) {
-    const current = open.shift();
-
-    if (current.x === end.x && current.y === end.y) {
-      const path = [];
-      let c = key(current.x,current.y);
-
-      while (c) {
-        const [x,y] = c.split(',').map(Number);
-        path.push({x,y});
-        c = cameFrom[c];
-      }
-
-      return path.reverse();
-    }
-
-    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-
-    for (let [dx,dy] of dirs) {
-      const nx = current.x + dx;
-      const ny = current.y + dy;
-
-      if (nx<0||ny<0||nx>=grid.cols||ny>=grid.rows) continue;
-
-      const k = key(nx,ny);
-      if (grid.blocked.has(k)) continue;
-
-      const newCost = cost[key(current.x,current.y)] + 1;
-
-      if (cost[k]===undefined || newCost<cost[k]) {
-        cost[k]=newCost;
-        cameFrom[k]=key(current.x,current.y);
-        open.push({x:nx,y:ny});
-      }
-    }
-  }
-  return null;
-}
-
-// =========================
-// STATE
-// =========================
-const state = {
-  grumpies: [],
-  happyCount: 0,
-  escapedSad: 0,
-  maxEscaped: 5,
-  totalSpawned: 25,
-  currentRound: 1,
-  totalRounds: 10,
-  gameOver: false,
-  win: false,
-  careCredits: 100,
-  gameMode: "menu",
-  waveTextTimer: 0,
-  pendingRound: 1,
-  instructionPages: [],
-  instructionPageIndex: 0,
-  pausedFromRound: 1,
-  menuCreditsOpen: false,
-  advancedUnlocked: false,
-  advancedMode: false,
-  justUnlockedAdvanced: false
-};
+// Shared setup/state/pathfinding lives in [kindness-core.js].
 
 const START = { x: 0, y: Math.floor(grid.rows / 2) };
 const END = { x: grid.cols - 1, y: Math.floor(grid.rows / 2) };
@@ -706,7 +549,9 @@ function createGrumpy(delay=0, options = {}){
   const avoidsHugs = !!options.avoidsHugs;
   const isBoss = !!options.isBoss;
   const hpMultiplier = state.advancedMode ? 2 : 1;
-  const maxSad = (isBoss ? (options.bossHp || 1000) : 100) * hpMultiplier;
+  const roundHpBonus = Math.max(0, state.currentRound - 1);
+  const baseSad = isBoss ? (options.bossHp || 1000) : 100;
+  const maxSad = (baseSad + roundHpBonus) * hpMultiplier;
   return {
     x: START.x*GRID_SIZE+20,
     y: START.y*GRID_SIZE+20,
@@ -1839,18 +1684,24 @@ function draw(){
 
 
   if(state.waveTextTimer>0){
+    const currentRoundHpBonus = Math.max(0, state.currentRound - 1);
     ctx.font="24px sans-serif";
     ctx.textAlign="center";
     ctx.fillText(
       `Round ${state.currentRound}: ${state.totalSpawned} Grumpies Incoming!`,
       canvas.width/2,60
     );
+    ctx.font = "16px sans-serif";
+    ctx.fillText(
+      `This round beefs grumpies up by +${currentRoundHpBonus} sad meter`,
+      canvas.width / 2,
+      86
+    );
     if (state.currentRound < state.totalRounds) {
-      ctx.font = "16px sans-serif";
       ctx.fillText(
-        `Next round adds +${ROUND_SPAWN_INCREASE} more`,
+        `Next round adds +${ROUND_SPAWN_INCREASE} grumpies and +1 sad meter`,
         canvas.width / 2,
-        86
+        108
       );
     }
   }
