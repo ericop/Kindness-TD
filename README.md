@@ -1,6 +1,6 @@
 # Kindness TD
 
-![Kindness TD early screenshot](C:\src\kindnessTD\Kindness TD early screenshot.png)
+![Kindness TD early screenshot](https://github.com/ericop/Kindness-TD/blob/main/Kindness%20TD%20early%20screenshot.png)
 
 Kindness TD is a small browser-based tower defense game built with plain JavaScript and HTML canvas.
 
