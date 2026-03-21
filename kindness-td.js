@@ -300,6 +300,22 @@ function createGrumpy(delay=0){
       ctx.arc(this.x,this.y,10,0,Math.PI*2);
       ctx.fill();
 
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(this.x - 3, this.y - 2, 1.2, 0, Math.PI * 2);
+      ctx.arc(this.x + 3, this.y - 2, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (this.isHappy) {
+        ctx.arc(this.x, this.y + 2, 4, 0.15 * Math.PI, 0.85 * Math.PI);
+      } else {
+        ctx.arc(this.x, this.y + 7, 4, 1.15 * Math.PI, 1.85 * Math.PI);
+      }
+      ctx.stroke();
+
       ctx.fillStyle='red';
       ctx.fillRect(this.x-10,this.y-18,20,3);
 
