@@ -97,14 +97,15 @@ const state = {
   waveTextTimer: 0,
   pendingRound: 1,
   instructionPages: [],
-  instructionPageIndex: 0
+  instructionPageIndex: 0,
+  pausedFromRound: 1
 };
 
 const START = { x: 0, y: Math.floor(grid.rows / 2) };
 const END = { x: grid.cols - 1, y: Math.floor(grid.rows / 2) };
 const HAPPY_HANGOUT = {
   x: canvas.width - 140,
-  y: 20,
+  y: 32,
   width: 120,
   height: 70
 };
@@ -113,15 +114,50 @@ const ROUND_SPAWN_INCREASE = 10;
 const HEADPHONE_GRUMPY_INTERVAL = 6;
 const DOG_ALLERGY_GRUMPY_INTERVAL = 6;
 const DOG_ALLERGY_GRUMPY_OFFSET = 2;
+const NO_HUG_GRUMPY_INTERVAL = 6;
+const NO_HUG_GRUMPY_OFFSET = 4;
+const BASE_SPAWN_DELAY = 0.6;
+const ROUND_SPAWN_SPEEDUP = 0.9;
 const instructionButton = {
   x: canvas.width / 2 - 90,
   y: canvas.height - 68,
   w: 180,
   h: 40
 };
+const pauseButton = {
+  x: canvas.width - 96,
+  y: 10,
+  w: 82,
+  h: 30
+};
+const pauseContinueButton = {
+  x: canvas.width / 2 - 110,
+  y: 196,
+  w: 220,
+  h: 42
+};
+const pauseMenuButton = {
+  x: canvas.width / 2 - 110,
+  y: 248,
+  w: 220,
+  h: 42
+};
 
 function getRoundSpawnCount(roundNumber) {
   return BASE_ROUND_SPAWN + (roundNumber - 1) * ROUND_SPAWN_INCREASE;
+}
+
+function getSpawnDelayForRound(roundNumber) {
+  return BASE_SPAWN_DELAY * Math.pow(ROUND_SPAWN_SPEEDUP, roundNumber - 1);
+}
+
+function pointInRect(x, y, rect) {
+  return (
+    x >= rect.x &&
+    x <= rect.x + rect.w &&
+    y >= rect.y &&
+    y <= rect.y + rect.h
+  );
 }
 
 function getInstructionPages(roundNumber) {
@@ -150,6 +186,36 @@ function getInstructionPages(roundNumber) {
         title: "Round 3",
         body: "Some grumpies are allergic to therapy dogs. Their mask icon means TherapyDog towers will skip them, so use your other kindness towers instead.",
         icon: { hasHeadphones: false, hasDogAllergy: true }
+      }
+    ];
+  }
+
+  if (roundNumber === 4) {
+    return [
+      {
+        title: "Round 4",
+        body: "Some grumpies do not like hugs. Their crossed-arms icon means Hugger towers will leave them alone, so use words, radio, or dogs to help them instead.",
+        icon: { hasHeadphones: false, hasDogAllergy: false, avoidsHugs: true }
+      }
+    ];
+  }
+
+  if (roundNumber === 5) {
+    return [
+      {
+        title: "Round 5 Boss Fight",
+        body: "A huge headphone grumpy is stomping in. Headphone Hank tunes out Affirming Words and Glad Radio, has a massive grumpy heart, but he is still partial to pets, so TherapyDog towers can help.",
+        icon: { isBoss: true, hasHeadphones: true, bossName: "Headphone Hank", bossHp: 1500 }
+      }
+    ];
+  }
+
+  if (roundNumber === 10) {
+    return [
+      {
+        title: "Round 10 Boss Fight",
+        body: "Negative Neil is the gloomiest grump in town. He lumbers in bigger than everyone else and slowly turns nearby towers grumpy, so protect your kindness crew while you cheer him up.",
+        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1000 }
       }
     ];
   }
@@ -217,6 +283,29 @@ function resetTowerTargets() {
   });
 }
 
+function forEachTower(callback) {
+  hugTowers.forEach(tower => callback(tower, "hug"));
+  therapyDogs.forEach(tower => callback(tower, "dog"));
+  affirmTowers.forEach(tower => callback(tower, "affirm"));
+  radioTowers.forEach(tower => callback(tower, "radio"));
+}
+
+function createStandardRoundGrumpy(roundNumber, index, spawnDelay) {
+  const g = createGrumpy(index * spawnDelay, {
+    hasHeadphones:
+      roundNumber >= 2 &&
+      index % HEADPHONE_GRUMPY_INTERVAL === HEADPHONE_GRUMPY_INTERVAL - 1,
+    hasDogAllergy:
+      roundNumber >= 3 &&
+      index % DOG_ALLERGY_GRUMPY_INTERVAL === DOG_ALLERGY_GRUMPY_OFFSET,
+    avoidsHugs:
+      roundNumber >= 4 &&
+      index % NO_HUG_GRUMPY_INTERVAL === NO_HUG_GRUMPY_OFFSET
+  });
+  g.path = findPath(START, END) || [];
+  return g;
+}
+
 function startRound(roundNumber) {
   state.currentRound = roundNumber;
   state.grumpies = [];
@@ -227,17 +316,47 @@ function startRound(roundNumber) {
   textBubbles.length = 0;
   resetTowerTargets();
 
-  for (let i = 0; i < state.totalSpawned; i++) {
-    const g = createGrumpy(i * 0.6, {
-      hasHeadphones:
-        roundNumber >= 2 &&
-        i % HEADPHONE_GRUMPY_INTERVAL === HEADPHONE_GRUMPY_INTERVAL - 1,
-      hasDogAllergy:
-        roundNumber >= 3 &&
-        i % DOG_ALLERGY_GRUMPY_INTERVAL === DOG_ALLERGY_GRUMPY_OFFSET
+  if (roundNumber === 5) {
+    const minionCount = 50;
+    state.totalSpawned = minionCount + 1;
+    const spawnDelay = getSpawnDelayForRound(roundNumber);
+    const boss = createGrumpy(0, {
+      isBoss: true,
+      hasHeadphones: true,
+      bossName: "Headphone Hank",
+      bossHp: 1500
     });
-    g.path = findPath(START, END) || [];
-    state.grumpies.push(g);
+    boss.path = findPath(START, END) || [];
+    state.grumpies.push(boss);
+
+    for (let i = 0; i < minionCount; i++) {
+      state.grumpies.push(createStandardRoundGrumpy(roundNumber, i + 1, spawnDelay));
+    }
+    return;
+  }
+
+  if (roundNumber === 10) {
+    const minionCount = 50;
+    state.totalSpawned = minionCount + 1;
+    const spawnDelay = getSpawnDelayForRound(roundNumber);
+    const boss = createGrumpy(0, {
+      isBoss: true,
+      bossName: "Negative Neil",
+      bossHp: 1000
+    });
+    boss.path = findPath(START, END) || [];
+    state.grumpies.push(boss);
+
+    for (let i = 0; i < minionCount; i++) {
+      state.grumpies.push(createStandardRoundGrumpy(roundNumber, i + 1, spawnDelay));
+    }
+    return;
+  }
+
+  const spawnDelay = getSpawnDelayForRound(roundNumber);
+
+  for (let i = 0; i < state.totalSpawned; i++) {
+    state.grumpies.push(createStandardRoundGrumpy(roundNumber, i, spawnDelay));
   }
 }
 
@@ -246,7 +365,7 @@ function startRound(roundNumber) {
 // =========================
 const startButton = {
   x: canvas.width/2 - 100,
-  y: canvas.height/2 + 55,
+  y: canvas.height/2 + 65,
   w: 200,
   h: 50
 };
@@ -264,6 +383,7 @@ const buildMenuButtons = [
   { label: "AffirmingWords", towerType: "affirm", direction: "down" },
   { label: "GladRadio", towerType: "radio", direction: "left" }
 ];
+const TOWER_PIXEL_DIM = 8;
 
 // =========================
 // PIXEL ART DEFINITIONS
@@ -274,54 +394,47 @@ const buildMenuButtons = [
 
 const towerPixelArt = {
   hug: [
-    // A more defined heart shape with a clear "reaching arm" silhouette
-    { x: 1, y: 0, c: "#ff9dbb" }, { x: 3, y: 0, c: "#ff9dbb" }, // Top of heart
-    { x: 0, y: 1, c: "#ffcf7d" }, { x: 1, y: 1, c: "#ff9dbb" }, { x: 2, y: 1, c: "#ff9dbb" }, { x: 3, y: 1, c: "#ff9dbb" }, { x: 4, y: 1, c: "#ffcf7d" }, // Reaching hands/arms
-    { x: 1, y: 2, c: "#ff9dbb" }, { x: 2, y: 2, c: "#ff9dbb" }, { x: 3, y: 2, c: "#ff9dbb" }, // Body
-    { x: 1, y: 3, c: "#ff9dbb" }, { x: 2, y: 3, c: "#ff9dbb" }, { x: 3, y: 3, c: "#ff9dbb" }, // Lower body
-    { x: 2, y: 4, c: "#ff9dbb" }  // Heart point/base
+    { x: 2, y: 0, c: "#ff7faa" }, { x: 5, y: 0, c: "#ff7faa" },
+    { x: 1, y: 1, c: "#ff7faa" }, { x: 2, y: 1, c: "#ffb3c8" }, { x: 3, y: 1, c: "#ff7faa" }, { x: 4, y: 1, c: "#ff7faa" }, { x: 5, y: 1, c: "#ffb3c8" }, { x: 6, y: 1, c: "#ff7faa" },
+    { x: 0, y: 2, c: "#ffd7a3" }, { x: 1, y: 2, c: "#ff7faa" }, { x: 2, y: 2, c: "#ff7faa" }, { x: 3, y: 2, c: "#ff7faa" }, { x: 4, y: 2, c: "#ff7faa" }, { x: 5, y: 2, c: "#ff7faa" }, { x: 6, y: 2, c: "#ff7faa" }, { x: 7, y: 2, c: "#ffd7a3" },
+    { x: 1, y: 3, c: "#ff7faa" }, { x: 2, y: 3, c: "#2f1b2d" }, { x: 3, y: 3, c: "#ffb3c8" }, { x: 4, y: 3, c: "#ffb3c8" }, { x: 5, y: 3, c: "#2f1b2d" }, { x: 6, y: 3, c: "#ff7faa" },
+    { x: 2, y: 4, c: "#ff7faa" }, { x: 3, y: 4, c: "#2f1b2d" }, { x: 4, y: 4, c: "#2f1b2d" }, { x: 5, y: 4, c: "#ff7faa" },
+    { x: 2, y: 5, c: "#ff7faa" }, { x: 3, y: 5, c: "#ff7faa" }, { x: 4, y: 5, c: "#ff7faa" }, { x: 5, y: 5, c: "#ff7faa" },
+    { x: 3, y: 6, c: "#ff7faa" }, { x: 4, y: 6, c: "#ff7faa" },
+    { x: 3, y: 7, c: "#ff7faa" }, { x: 4, y: 7, c: "#ff7faa" }
   ],
 
   dog: [
-    // Focused on the "Head and Ears" silhouette for instant recognition
-    { x: 0, y: 0, c: "#b86b2b" }, { x: 4, y: 0, c: "#b86b2b" }, // High floppy ears
-    { x: 0, y: 1, c: "#b86b2b" }, { x: 1, y: 1, c: "#f0c27b" }, { x: 2, y: 1, c: "#f0c27b" }, { x: 3, y: 1, c: "#f0c27b" }, { x: 4, y: 1, c: "#b86b2b" }, // Face + Ear length
-    { x: 1, y: 2, c: "#f0c27b" }, { x: 2, y: 2, c: "#000000" }, { x: 3, y: 2, c: "#f0c27b" }, // Eyes/Nose area
-    { x: 1, y: 3, c: "#c68625" }, { x: 2, y: 3, c: "#c68625" }, { x: 3, y: 3, c: "#c68625" }, // Muzzle
-    { x: 1, y: 4, c: "#a1581c" }, { x: 3, y: 4, c: "#a1581c" }  // Bright brown collar base
+    { x: 1, y: 0, c: "#8f5a2a" }, { x: 6, y: 0, c: "#8f5a2a" },
+    { x: 0, y: 1, c: "#8f5a2a" }, { x: 1, y: 1, c: "#8f5a2a" }, { x: 2, y: 1, c: "#f4c78a" }, { x: 3, y: 1, c: "#f4c78a" }, { x: 4, y: 1, c: "#f4c78a" }, { x: 5, y: 1, c: "#f4c78a" }, { x: 6, y: 1, c: "#8f5a2a" }, { x: 7, y: 1, c: "#8f5a2a" },
+    { x: 1, y: 2, c: "#8f5a2a" }, { x: 2, y: 2, c: "#f4c78a" }, { x: 3, y: 2, c: "#f8ddb4" }, { x: 4, y: 2, c: "#f8ddb4" }, { x: 5, y: 2, c: "#f4c78a" }, { x: 6, y: 2, c: "#8f5a2a" },
+    { x: 1, y: 3, c: "#f4c78a" }, { x: 2, y: 3, c: "#f4c78a" }, { x: 3, y: 3, c: "#111111" }, { x: 4, y: 3, c: "#111111" }, { x: 5, y: 3, c: "#f4c78a" }, { x: 6, y: 3, c: "#f4c78a" },
+    { x: 2, y: 4, c: "#d99b58" }, { x: 3, y: 4, c: "#f6e4d4" }, { x: 4, y: 4, c: "#f6e4d4" }, { x: 5, y: 4, c: "#d99b58" },
+    { x: 2, y: 5, c: "#d99b58" }, { x: 3, y: 5, c: "#2b1f1a" }, { x: 4, y: 5, c: "#2b1f1a" }, { x: 5, y: 5, c: "#d99b58" },
+    { x: 2, y: 6, c: "#8f5a2a" }, { x: 3, y: 6, c: "#d99b58" }, { x: 4, y: 6, c: "#d99b58" }, { x: 5, y: 6, c: "#8f5a2a" },
+    { x: 2, y: 7, c: "#c83c4a" }, { x: 3, y: 7, c: "#e14f5d" }, { x: 4, y: 7, c: "#e14f5d" }, { x: 5, y: 7, c: "#c83c4a" }
   ],
 
   affirm: [
-  // Tip of the cone
-  { x: 2, y: 0, c: "#ffffff" },
-
-  // Upper-middle of cone
-  { x: 1, y: 1, c: "#cccccc" }, { x: 2, y: 1, c: "#ffffff" }, { x: 3, y: 1, c: "#cccccc" },
-
-  // Base of cone
-  { x: 0, y: 2, c: "#cccccc" }, { x: 1, y: 2, c: "#ffffff" }, { x: 2, y: 2, c: "#ffffff" }, { x: 3, y: 2, c: "#ffffff" }, { x: 4, y: 2, c: "#cccccc" },
-
-  // Handle (open / transparent)
-    { x: 2, y: 3, c: "#999" }, { x: 4, y: 3, c: "#999" },  // Bright brown collar base
-
-  // Handle bottom left for visual balance
-    { x: 2, y: 4, c: "#999" }, { x: 3, y: 4, c: "#999" } // Muzzle
-
-],
+    { x: 4, y: 1, c: "#ffffff" },
+    { x: 3, y: 2, c: "#e3e3e3" }, { x: 4, y: 2, c: "#ffffff" }, { x: 5, y: 2, c: "#ffffff" },
+    { x: 2, y: 3, c: "#d0d0d0" }, { x: 3, y: 3, c: "#ffffff" }, { x: 4, y: 3, c: "#ffffff" }, { x: 5, y: 3, c: "#ffffff" }, { x: 6, y: 3, c: "#ffffff" },
+    { x: 1, y: 4, c: "#c8c8c8" }, { x: 2, y: 4, c: "#ffffff" }, { x: 3, y: 4, c: "#ffffff" }, { x: 4, y: 4, c: "#ffffff" }, { x: 5, y: 4, c: "#ffffff" }, { x: 6, y: 4, c: "#ffffff" }, { x: 7, y: 4, c: "#c8c8c8" },
+    { x: 1, y: 5, c: "#c8c8c8" }, { x: 2, y: 5, c: "#ffffff" }, { x: 3, y: 5, c: "#ffffff" }, { x: 4, y: 5, c: "#ffffff" }, { x: 5, y: 5, c: "#ffffff" }, { x: 6, y: 5, c: "#ffffff" }, { x: 7, y: 5, c: "#c8c8c8" },
+    { x: 3, y: 6, c: "#8a8a8a" }, { x: 4, y: 6, c: "#ffffff" }, { x: 5, y: 6, c: "#8a8a8a" },
+    { x: 4, y: 7, c: "#8a8a8a" }, { x: 5, y: 7, c: "#8a8a8a" }
+  ],
 
   radio: [
-    // Classic "Boombox" look with a central speaker and top handle
-  // Top row: handle
-  { x: 1, y: 0, c: "#444444" }, { x: 2, y: 0, c: "#444444" }, { x: 3, y: 0, c: "#444444" }, 
-  // Second row: top corners + handle base
-  { x: 0, y: 1, c: "#000000" },  { x: 4, y: 1, c: "#000000" }, 
-  // Middle row: dial or tuner
-  { x: 0, y: 2, c: "#000000" }, { x: 1, y: 2, c: "#999999" }, { x: 2, y: 2, c: "#ffffff" }, { x: 3, y: 2, c: "#999999" }, { x: 4, y: 2, c: "#000000" }, 
-  // Fourth row: speaker
-  { x: 0, y: 3, c: "#000000" }, { x: 1, y: 3, c: "#444444" }, { x: 2, y: 3, c: "#444444" }, { x: 3, y: 3, c: "#444444" }, { x: 4, y: 3, c: "#000000" }, 
-  // Bottom row: base/support
-  { x: 0, y: 4, c: "#000000" },{ x: 1, y: 4, c: "#000000" }, { x: 2, y: 4, c: "#000000" }, { x: 3, y: 4, c: "#000000" }, { x: 4, y: 4, c: "#000000" }
-]
+    { x: 2, y: 0, c: "#2f2f35" }, { x: 3, y: 0, c: "#2f2f35" }, { x: 4, y: 0, c: "#2f2f35" }, { x: 5, y: 0, c: "#2f2f35" },
+    { x: 1, y: 1, c: "#1f1f24" }, { x: 2, y: 1, c: "#2f2f35" }, { x: 3, y: 1, c: "#2f2f35" }, { x: 4, y: 1, c: "#2f2f35" }, { x: 5, y: 1, c: "#2f2f35" }, { x: 6, y: 1, c: "#1f1f24" },
+    { x: 0, y: 2, c: "#18181c" }, { x: 1, y: 2, c: "#4a4a54" }, { x: 2, y: 2, c: "#ededf2" }, { x: 3, y: 2, c: "#bfc4d6" }, { x: 4, y: 2, c: "#bfc4d6" }, { x: 5, y: 2, c: "#ededf2" }, { x: 6, y: 2, c: "#4a4a54" }, { x: 7, y: 2, c: "#18181c" },
+    { x: 0, y: 3, c: "#18181c" }, { x: 1, y: 3, c: "#585865" }, { x: 2, y: 3, c: "#23232a" }, { x: 3, y: 3, c: "#23232a" }, { x: 4, y: 3, c: "#23232a" }, { x: 5, y: 3, c: "#23232a" }, { x: 6, y: 3, c: "#585865" }, { x: 7, y: 3, c: "#18181c" },
+    { x: 0, y: 4, c: "#18181c" }, { x: 1, y: 4, c: "#585865" }, { x: 2, y: 4, c: "#6d6df0" }, { x: 3, y: 4, c: "#23232a" }, { x: 4, y: 4, c: "#23232a" }, { x: 5, y: 4, c: "#6d6df0" }, { x: 6, y: 4, c: "#585865" }, { x: 7, y: 4, c: "#18181c" },
+    { x: 0, y: 5, c: "#18181c" }, { x: 1, y: 5, c: "#585865" }, { x: 2, y: 5, c: "#23232a" }, { x: 3, y: 5, c: "#57d8ff" }, { x: 4, y: 5, c: "#57d8ff" }, { x: 5, y: 5, c: "#23232a" }, { x: 6, y: 5, c: "#585865" }, { x: 7, y: 5, c: "#18181c" },
+    { x: 0, y: 6, c: "#202028" }, { x: 1, y: 6, c: "#202028" }, { x: 2, y: 6, c: "#202028" }, { x: 3, y: 6, c: "#202028" }, { x: 4, y: 6, c: "#202028" }, { x: 5, y: 6, c: "#202028" }, { x: 6, y: 6, c: "#202028" }, { x: 7, y: 6, c: "#202028" },
+    { x: 1, y: 7, c: "#18181c" }, { x: 2, y: 7, c: "#18181c" }, { x: 5, y: 7, c: "#18181c" }, { x: 6, y: 7, c: "#18181c" }
+  ]
 };
 
 const menuGrumpies = [];
@@ -332,8 +445,9 @@ function ensureMenuGrumpies() {
   menuGrumpies.push(
     { x: 160, y: 250, vx: 18, vy: 7, hasHeadphones: false, hasDogAllergy: false },
     { x: 240, y: 295, vx: 14, vy: -6, hasHeadphones: true, hasDogAllergy: false },
-    { x: 375, y: 260, vx: -16, vy: 5, hasHeadphones: false, hasDogAllergy: true },
-    { x: 520, y: 300, vx: 15, vy: -5, hasHeadphones: true, hasDogAllergy: false },
+    { x: 375, y: 260, vx: -16, vy: 5, hasHeadphones: false, hasDogAllergy: true, avoidsHugs: false },
+    { x: 520, y: 300, vx: 15, vy: -5, hasHeadphones: true, hasDogAllergy: false, avoidsHugs: false },
+    { x: 455, y: 315, vx: 13, vy: 4, hasHeadphones: false, hasDogAllergy: false, avoidsHugs: true },
     { x: 610, y: 248, vx: -17, vy: 6, hasHeadphones: false, hasDogAllergy: false }
   );
 }
@@ -363,33 +477,36 @@ function updateMenuGrumpies(dt) {
 }
 
 function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
+  const scale = grumpy.scale || 1;
+  const radius = 10 * scale;
+
   ctx.fillStyle=grumpy.isHappy?'gold':'gray';
   ctx.beginPath();
-  ctx.arc(grumpy.x,grumpy.y,10,0,Math.PI*2);
+  ctx.arc(grumpy.x,grumpy.y,radius,0,Math.PI*2);
   ctx.fill();
 
   ctx.fillStyle = '#111';
   ctx.beginPath();
-  ctx.arc(grumpy.x - 3, grumpy.y - 2, 1.2, 0, Math.PI * 2);
-  ctx.arc(grumpy.x + 3, grumpy.y - 2, 1.2, 0, Math.PI * 2);
+  ctx.arc(grumpy.x - 3 * scale, grumpy.y - 2 * scale, 1.2 * scale, 0, Math.PI * 2);
+  ctx.arc(grumpy.x + 3 * scale, grumpy.y - 2 * scale, 1.2 * scale, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = '#111';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.5 * scale;
   ctx.beginPath();
   if (grumpy.isHappy) {
-    ctx.arc(grumpy.x, grumpy.y + 2, 4, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.arc(grumpy.x, grumpy.y + 2 * scale, 4 * scale, 0.15 * Math.PI, 0.85 * Math.PI);
   } else {
-    ctx.arc(grumpy.x, grumpy.y + 7, 4, 1.15 * Math.PI, 1.85 * Math.PI);
+    ctx.arc(grumpy.x, grumpy.y + 7 * scale, 4 * scale, 1.15 * Math.PI, 1.85 * Math.PI);
   }
   ctx.stroke();
 
   if (showHealthBar) {
     ctx.fillStyle='red';
-    ctx.fillRect(grumpy.x-10,grumpy.y-18,20,3);
+    ctx.fillRect(grumpy.x-10 * scale,grumpy.y-18 * scale,20 * scale,3 * scale);
 
     ctx.fillStyle='lime';
-    ctx.fillRect(grumpy.x-10,grumpy.y-18,20*(1-grumpy.sad/grumpy.maxSad),3);
+    ctx.fillRect(grumpy.x-10 * scale,grumpy.y-18 * scale,20 * scale*(1-grumpy.sad/grumpy.maxSad),3 * scale);
   }
 
   if (grumpy.hasHeadphones) {
@@ -431,16 +548,39 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
     ctx.stroke();
   }
 
+  if (grumpy.avoidsHugs) {
+    ctx.strokeStyle = '#c84d7a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(grumpy.x - 7, grumpy.y + 4);
+    ctx.lineTo(grumpy.x - 1, grumpy.y + 1);
+    ctx.moveTo(grumpy.x - 1, grumpy.y + 1);
+    ctx.lineTo(grumpy.x + 5, grumpy.y + 5);
+    ctx.moveTo(grumpy.x + 7, grumpy.y + 4);
+    ctx.lineTo(grumpy.x + 1, grumpy.y + 1);
+    ctx.moveTo(grumpy.x + 1, grumpy.y + 1);
+    ctx.lineTo(grumpy.x - 5, grumpy.y + 5);
+    ctx.stroke();
+  }
+
   if(grumpy.isHugged){
     ctx.strokeStyle='pink';
     const t=performance.now()*0.005;
     for(let i=0;i<2;i++){
       const a=t+i*Math.PI;
       ctx.beginPath();
-      ctx.moveTo(grumpy.x+Math.cos(a)*12,grumpy.y+Math.sin(a)*12);
-      ctx.lineTo(grumpy.x+Math.cos(a+1)*12,grumpy.y+Math.sin(a+1)*12);
+      ctx.moveTo(grumpy.x+Math.cos(a)*12*scale,grumpy.y+Math.sin(a)*12*scale);
+      ctx.lineTo(grumpy.x+Math.cos(a+1)*12*scale,grumpy.y+Math.sin(a+1)*12*scale);
       ctx.stroke();
     }
+  }
+
+  if (grumpy.name) {
+    ctx.fillStyle = "#fff4b5";
+    ctx.font = `${Math.max(12, 12 * scale)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(grumpy.name, grumpy.x, grumpy.y - radius - 8);
   }
 }
 
@@ -469,17 +609,24 @@ function startGame() {
 function createGrumpy(delay=0, options = {}){
   const hasHeadphones = !!options.hasHeadphones;
   const hasDogAllergy = !!options.hasDogAllergy;
+  const avoidsHugs = !!options.avoidsHugs;
+  const isBoss = !!options.isBoss;
+  const maxSad = isBoss ? (options.bossHp || 1000) : 100;
   return {
     x: START.x*GRID_SIZE+20,
     y: START.y*GRID_SIZE+20,
-    speed:40,
-    sad:100,
-    maxSad:100,
+    speed:isBoss ? 26 : 40,
+    sad:maxSad,
+    maxSad,
     delay,
     active:false,
     isHappy:false,
     hasHeadphones,
     hasDogAllergy,
+    avoidsHugs,
+    isBoss,
+    scale:isBoss ? 1.5 : 1,
+    name:isBoss ? (options.bossName || "Negative Neil") : "",
     allergicToDogs: hasDogAllergy,
     ignoresAffirmations: hasHeadphones,
     ignoresRadio: hasHeadphones,
@@ -506,11 +653,11 @@ function createGrumpy(delay=0, options = {}){
           state.careCredits += 10;
           textBubbles.push({
           text: "+10 ❤️",
-            x: this.x,
+            x: this.x + (Math.random() * 12 - 6),
             y: this.y - 20,
             target: null,
             life: 1,
-            speed: 0,
+            speed: 18,
             hit: false,
             style: "reward"
           });
@@ -533,7 +680,10 @@ function createGrumpy(delay=0, options = {}){
         }
       } else if(!this.reachedEnd){
         this.reachedEnd=true;
-        if(this.sad>0) state.escapedSad++;
+        this.active=false;
+        if (this.sad > 0) {
+          state.escapedSad += this.isBoss ? 5 : 1;
+        }
       }
     },
 
@@ -556,6 +706,7 @@ const radioTowers=[];
 // =========================
 function applyCareCredits(dt){
   radioTowers.forEach(t=>{
+    if (t.isGrumpy) return;
     state.grumpies.forEach(g=>{
       if(!g.active||g.isHappy) return;
       if(g.ignoresRadio) return;
@@ -573,9 +724,14 @@ function applyCareCredits(dt){
 
 function applyHugs(dt){
   hugTowers.forEach(t=>{
+    if (t.isGrumpy) {
+      t.target = null;
+      return;
+    }
     if(!t.target){
       for(let g of state.grumpies){
         if(!g.active||g.isHappy) continue;
+        if(g.avoidsHugs) continue;
         if(Math.hypot(g.x-t.x,g.y-t.y)<t.range){
           t.target=g; break;
         }
@@ -601,6 +757,10 @@ function applyHugs(dt){
 
 function applyTherapyDogs(dt){
   therapyDogs.forEach(d=>{
+    if (d.isGrumpy) {
+      d.targets = [];
+      return;
+    }
     d.targets=d.targets.filter(g=>!g.isHappy && !g.allergicToDogs);
 
     const candidates=state.grumpies.filter(g=>{
@@ -641,6 +801,10 @@ const textBubbles=[];
 
 function applyAffirmations(dt){
   affirmTowers.forEach(t=>{
+    if (t.isGrumpy) {
+      t.target = null;
+      return;
+    }
     if (
       t.target &&
       (t.target.isHappy || t.target.reachedEnd)
@@ -689,6 +853,24 @@ function applyAffirmations(dt){
         });
       }
     }
+  });
+}
+
+function applyNegativeNeil(dt) {
+  state.grumpies.forEach(grumpy => {
+    if (!grumpy.active || grumpy.isHappy || grumpy.name !== "Negative Neil") return;
+
+    forEachTower(tower => {
+      const distance = Math.hypot(grumpy.x - tower.x, grumpy.y - tower.y);
+
+      if (distance < 90) {
+        tower.grumpiness = Math.min(1, (tower.grumpiness || 0) + dt * 0.2);
+      } else if (!tower.isGrumpy) {
+        tower.grumpiness = Math.max(0, (tower.grumpiness || 0) - dt * 0.06);
+      }
+
+      tower.isGrumpy = (tower.grumpiness || 0) >= 1;
+    });
   });
 }
 
@@ -806,6 +988,17 @@ function advanceInstructions() {
   state.gameMode = "playing";
 }
 
+function resumeFromPause() {
+  state.gameMode = "playing";
+}
+
+function returnToMainMenu() {
+  placementMenu.active = false;
+  state.instructionPages = [];
+  state.instructionPageIndex = 0;
+  state.gameMode = "menu";
+}
+
 function handleInput(clientX,clientY,click=false){
 
 if (state.gameMode === "menu") {
@@ -843,6 +1036,22 @@ if (state.gameMode === "menu") {
     return;
   }
 
+  if (state.gameMode === "paused") {
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    if (click && pointInRect(x, y, pauseContinueButton)) {
+      resumeFromPause();
+      return;
+    }
+
+    if (click && pointInRect(x, y, pauseMenuButton)) {
+      returnToMainMenu();
+    }
+    return;
+  }
+
   if(state.gameMode==="gameover"){
     placementMenu.active = false;
     if(click) state.gameMode="menu";
@@ -852,6 +1061,13 @@ if (state.gameMode === "menu") {
   const rect=canvas.getBoundingClientRect();
   const x=clientX-rect.left;
   const y=clientY-rect.top;
+
+  if (click && pointInRect(x, y, pauseButton)) {
+    placementMenu.active = false;
+    state.pausedFromRound = state.currentRound;
+    state.gameMode = "paused";
+    return;
+  }
 
   mouse.x=x; mouse.y=y;
   const {cx,cy}=getCell(x,y);
@@ -880,8 +1096,9 @@ if (state.gameMode === "menu") {
   preview.cx=cx; preview.cy=cy;
 
   const key=cellKey(cx,cy);
+  const isSpawnCell = cx === START.x && cy === START.y;
 
-  if(grid.blocked.has(key)){
+  if(isSpawnCell || grid.blocked.has(key)){
     preview.valid=false;
   } else {
     grid.blocked.add(key);
@@ -905,10 +1122,17 @@ function placeTower(cx,cy,towerType=selectedTower){
   const x=cx*GRID_SIZE+20;
   const y=cy*GRID_SIZE+20;
 
-  if(towerType==="hug") hugTowers.push({x,y,range:40,target:null});
-  if(towerType==="dog") therapyDogs.push({x,y,speed:60,range:120,targets:[]});
-  if(towerType==="affirm") affirmTowers.push({x,y,range:140,target:null,cooldown:0});
-  if(towerType==="radio") radioTowers.push({x,y,radius:120});
+  const baseTower = {
+    x,
+    y,
+    grumpiness: 0,
+    isGrumpy: false
+  };
+
+  if(towerType==="hug") hugTowers.push({...baseTower, range:40, target:null});
+  if(towerType==="dog") therapyDogs.push({...baseTower, speed:60, range:120, targets:[]});
+  if(towerType==="affirm") affirmTowers.push({...baseTower, range:140, target:null, cooldown:0});
+  if(towerType==="radio") radioTowers.push({...baseTower, radius:120});
 
   grid.blocked.add(cellKey(cx,cy));
   refreshGrumpyPaths();
@@ -954,6 +1178,7 @@ function update(dt){
   }
 
   if(state.gameMode==="instructions") return;
+  if(state.gameMode==="paused") return;
 
   if(state.gameMode!=="playing") return;
 
@@ -963,6 +1188,7 @@ function update(dt){
   applyHugs(dt);
   applyTherapyDogs(dt);
   applyAffirmations(dt);
+  applyNegativeNeil(dt);
   updateTextBubbles(dt);
 
   if(state.escapedSad>=state.maxEscaped){
@@ -1007,6 +1233,25 @@ function drawPixelArtWithBounce(ctx, x, y, pixels, size=4, tOffset=0, amp=2, spe
       size
     );
   });
+}
+
+function drawTowerSpriteCentered(ctx, centerX, centerY, pixels, size, tOffset, amp, speed) {
+  const topLeftX = centerX - (TOWER_PIXEL_DIM * size) / 2;
+  const topLeftY = centerY - (TOWER_PIXEL_DIM * size) / 2;
+  drawPixelArtWithBounce(ctx, topLeftX, topLeftY, pixels, size, tOffset, amp, speed);
+}
+
+function drawTowerGrumpiness(ctx, tower) {
+  ctx.fillStyle = "rgba(40, 20, 30, 0.5)";
+  ctx.beginPath();
+  ctx.arc(tower.x, tower.y, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#2b1f1a";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(tower.x, tower.y + 3, 5, 1.15 * Math.PI, 1.85 * Math.PI);
+  ctx.stroke();
 }
 
 function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
@@ -1061,10 +1306,10 @@ function draw(){
     ctx.arc(645,72,22,0,Math.PI*2);
     ctx.fill();
 
-    drawPixelArtWithBounce(ctx, 95, 175, towerPixelArt.hug, 10, 0.2, 2, 0.004);
-    drawPixelArtWithBounce(ctx, 250, 170, towerPixelArt.dog, 10, 1.0, 2, 0.005);
-    drawPixelArtWithBounce(ctx, 430, 178, towerPixelArt.affirm, 10, 1.8, 2, 0.0045);
-    drawPixelArtWithBounce(ctx, 600, 172, towerPixelArt.radio, 10, 2.6, 2, 0.0055);
+    drawTowerSpriteCentered(ctx, 135, 215, towerPixelArt.hug, 6, 0.2, 2, 0.004);
+    drawTowerSpriteCentered(ctx, 290, 212, towerPixelArt.dog, 6, 1.0, 2, 0.005);
+    drawTowerSpriteCentered(ctx, 470, 218, towerPixelArt.affirm, 6, 1.8, 2, 0.0045);
+    drawTowerSpriteCentered(ctx, 640, 214, towerPixelArt.radio, 6, 2.6, 2, 0.0055);
 
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.lineWidth = 18;
@@ -1142,12 +1387,16 @@ function draw(){
         {
           x: canvas.width / 2,
           y: 245,
-          sad: 100,
-          maxSad: 100,
+          sad: page.icon.isBoss ? (page.icon.bossHp || 1000) : 100,
+          maxSad: page.icon.isBoss ? (page.icon.bossHp || 1000) : 100,
           isHappy: false,
           isHugged: false,
           hasHeadphones: !!page.icon.hasHeadphones,
-          hasDogAllergy: !!page.icon.hasDogAllergy
+          hasDogAllergy: !!page.icon.hasDogAllergy,
+          avoidsHugs: !!page.icon.avoidsHugs,
+          isBoss: !!page.icon.isBoss,
+          scale: page.icon.isBoss ? 1.5 : 1,
+          name: page.icon.isBoss ? (page.icon.bossName || "Negative Neil") : ""
         },
         false
       );
@@ -1242,7 +1491,8 @@ function draw(){
   //   ctx.fill();
   // });
   hugTowers.forEach((t,i)=>{
-    drawPixelArtWithBounce(ctx, t.x - 12, t.y - 12, towerPixelArt.hug, 6, i*0.5, 2, 0.006);
+    drawTowerSpriteCentered(ctx, t.x, t.y, towerPixelArt.hug, 4, i*0.5, 2, 0.006);
+    if (t.isGrumpy) drawTowerGrumpiness(ctx, t);
   });
 
   // therapyDogs.forEach(d=>{
@@ -1252,7 +1502,8 @@ function draw(){
   //   ctx.fill();
   // });
   therapyDogs.forEach((d,i)=>{
-    drawPixelArtWithBounce(ctx, d.x - 12, d.y - 12, towerPixelArt.dog, 6, i*0.3, 1.5, 0.007);
+    drawTowerSpriteCentered(ctx, d.x, d.y, towerPixelArt.dog, 4, i*0.3, 1.5, 0.007);
+    if (d.isGrumpy) drawTowerGrumpiness(ctx, d);
   });
 
   // affirmTowers.forEach(t=>{
@@ -1262,7 +1513,8 @@ function draw(){
   //   ctx.fill();
   // });
   affirmTowers.forEach((t,i)=>{
-    drawPixelArtWithBounce(ctx, t.x - 12, t.y - 12, towerPixelArt.affirm, 6, i*0.2, 1.8, 0.008);
+    drawTowerSpriteCentered(ctx, t.x, t.y, towerPixelArt.affirm, 4, i*0.2, 1.8, 0.008);
+    if (t.isGrumpy) drawTowerGrumpiness(ctx, t);
   });
 
   // radioTowers.forEach(t=>{
@@ -1282,10 +1534,13 @@ function draw(){
     ctx.arc(t.x,t.y,t.radius,0,Math.PI*2);
     ctx.stroke();
 
-    drawPixelArtWithBounce(ctx, t.x - 12, t.y - 12, towerPixelArt.radio, 6, i*0.4, 2.5, 0.005);
+    drawTowerSpriteCentered(ctx, t.x, t.y, towerPixelArt.radio, 4, i*0.4, 2.5, 0.005);
+    if (t.isGrumpy) drawTowerGrumpiness(ctx, t);
   });
 
-  state.grumpies.forEach(g=>g.draw(ctx));
+  state.grumpies.forEach(g=>{
+    if (!g.reachedEnd) g.draw(ctx);
+  });
 
   textBubbles.forEach(b=>{
     if (b.style === "reward") {
@@ -1329,7 +1584,18 @@ function draw(){
   ctx.textBaseline = "top";
   ctx.fillText(`careCredits: ${state.careCredits}`,10,20);
   ctx.fillText(`round: ${state.currentRound}/${state.totalRounds}`,10,40);
-  ctx.fillText(`+${ROUND_SPAWN_INCREASE} grumpies each round`,10,60);
+  ctx.fillText(`missed hearts: ${state.escapedSad}/${state.maxEscaped}`,10,60);
+
+  ctx.fillStyle = state.gameMode === "paused" ? "#40566f" : "#2f4762";
+  ctx.fillRect(pauseButton.x, pauseButton.y, pauseButton.w, pauseButton.h);
+  ctx.strokeStyle = "#f2f7ff";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(pauseButton.x, pauseButton.y, pauseButton.w, pauseButton.h);
+  ctx.fillStyle = "white";
+  ctx.font = "15px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Pause", pauseButton.x + pauseButton.w / 2, pauseButton.y + pauseButton.h / 2);
 
   if (placementMenu.active) {
     const buttons = getPlacementMenuButtons(
@@ -1376,6 +1642,71 @@ function draw(){
         86
       );
     }
+  }
+
+  if (state.gameMode === "paused") {
+    ctx.fillStyle = "rgba(7, 16, 28, 0.72)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#15263f";
+    ctx.fillRect(canvas.width / 2 - 150, 118, 300, 196);
+    ctx.strokeStyle = "#f0f6ff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(canvas.width / 2 - 150, 118, 300, 196);
+
+    ctx.fillStyle = "white";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText("Paused", canvas.width / 2, 138);
+
+    ctx.font = "15px sans-serif";
+    ctx.fillStyle = "#d9e7ff";
+    ctx.fillText(`Round ${state.pausedFromRound} is waiting for you`, canvas.width / 2, 172);
+
+    ctx.fillStyle = "#2e8b57";
+    ctx.fillRect(
+      pauseContinueButton.x,
+      pauseContinueButton.y,
+      pauseContinueButton.w,
+      pauseContinueButton.h
+    );
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(
+      pauseContinueButton.x,
+      pauseContinueButton.y,
+      pauseContinueButton.w,
+      pauseContinueButton.h
+    );
+    ctx.fillStyle = "white";
+    ctx.font = "18px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      "Continue Game",
+      pauseContinueButton.x + pauseContinueButton.w / 2,
+      pauseContinueButton.y + pauseContinueButton.h / 2
+    );
+
+    ctx.fillStyle = "#8d395c";
+    ctx.fillRect(
+      pauseMenuButton.x,
+      pauseMenuButton.y,
+      pauseMenuButton.w,
+      pauseMenuButton.h
+    );
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(
+      pauseMenuButton.x,
+      pauseMenuButton.y,
+      pauseMenuButton.w,
+      pauseMenuButton.h
+    );
+    ctx.fillStyle = "white";
+    ctx.fillText(
+      "Return To Main Screen",
+      pauseMenuButton.x + pauseMenuButton.w / 2,
+      pauseMenuButton.y + pauseMenuButton.h / 2
+    );
   }
 }
 
