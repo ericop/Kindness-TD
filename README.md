@@ -6,10 +6,9 @@ Kindness TD is a small browser-based tower defense game built with plain JavaScr
 
 Instead of defeating enemies with damage, the goal is to help grumpies feel better. Towers reduce a grumpy's sad meter, and happy grumpies head to the Happy Hangout.
 
-## 🎮 Play the Game
+## Play Online
 
-👉 **[Click here to play Kindness TD](https://ericop.github.io/Kindness-TD/)**
-
+[Try it yourself](https://ericop.github.io/Kindness-TD/)
 
 ## Run Locally
 
@@ -38,3 +37,9 @@ No build step or dependencies are required.
 - HTML canvas
 - No framework
 - Single-file game logic in [kindness-td.js](C:\src\kindnessTD\kindness-td.js)
+
+## GitHub Pages Setup
+
+This repo now includes a GitHub Actions workflow at [deploy-pages.yml](C:\src\kindnessTD\.github\workflows\deploy-pages.yml) that deploys the site whenever `main` is pushed.
+
+If the site is not live yet, open your repository settings on GitHub and set `Pages` to use `GitHub Actions` as the source. After that, each push to `main` will publish the game automatically.
