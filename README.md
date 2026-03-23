@@ -6,6 +6,9 @@ Kindness TD is a small browser-based tower defense game built with plain JavaScr
 
 Instead of defeating enemies with damage, the goal is to help grumpies feel better. Towers reduce a grumpy's sad meter, and happy grumpies head to the Happy Hangout.
 
+
+> Game pitch: Kindness TD is a tower defense game about spreading love through a grumpy little town. You build kindness-powered towers, cheer up grumpies instead of defeating them, and guide them toward the Happy Hangout.
+
 ## Play Online
 
 [Try it yourself](https://ericop.github.io/Kindness-TD/)

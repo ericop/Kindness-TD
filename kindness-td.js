@@ -351,15 +351,13 @@ const towerPixelArt = {
   ],
 
   affirm: [
-    { x: 6, y: 1, c: "#ffffff" },
-    { x: 5, y: 2, c: "#efefef" }, { x: 6, y: 2, c: "#ffffff" }, { x: 7, y: 2, c: "#ffffff" },
-    { x: 4, y: 3, c: "#e3e3e3" }, { x: 5, y: 3, c: "#ffffff" }, { x: 6, y: 3, c: "#ffffff" }, { x: 7, y: 3, c: "#ffffff" }, { x: 8, y: 3, c: "#ffffff" },
-    { x: 3, y: 4, c: "#d5d5d5" }, { x: 4, y: 4, c: "#ffffff" }, { x: 5, y: 4, c: "#ffffff" }, { x: 6, y: 4, c: "#ffffff" }, { x: 7, y: 4, c: "#ffffff" }, { x: 8, y: 4, c: "#ffffff" }, { x: 9, y: 4, c: "#d5d5d5" },
-    { x: 2, y: 5, c: "#c8c8c8" }, { x: 3, y: 5, c: "#ffffff" }, { x: 4, y: 5, c: "#ffffff" }, { x: 5, y: 5, c: "#ffffff" }, { x: 6, y: 5, c: "#ffffff" }, { x: 7, y: 5, c: "#ffffff" }, { x: 8, y: 5, c: "#ffffff" }, { x: 9, y: 5, c: "#c8c8c8" },
-    { x: 2, y: 6, c: "#c8c8c8" }, { x: 3, y: 6, c: "#ffffff" }, { x: 4, y: 6, c: "#ffffff" }, { x: 5, y: 6, c: "#ffffff" }, { x: 6, y: 6, c: "#ffffff" }, { x: 7, y: 6, c: "#ffffff" }, { x: 8, y: 6, c: "#ffffff" }, { x: 9, y: 6, c: "#c8c8c8" },
-    { x: 5, y: 7, c: "#8a8a8a" }, { x: 6, y: 7, c: "#ffffff" }, { x: 7, y: 7, c: "#8a8a8a" },
-    { x: 5, y: 8, c: "#8a8a8a" }, { x: 6, y: 8, c: "#8a8a8a" },
-    { x: 5, y: 9, c: "#737373" }, { x: 6, y: 9, c: "#737373" }
+    { x: 1, y: 3, c: "#d9d9d9" }, { x: 2, y: 3, c: "#f3f3f3" }, { x: 3, y: 3, c: "#ffffff" }, { x: 4, y: 3, c: "#ffffff" }, { x: 5, y: 3, c: "#ffffff" },
+    { x: 1, y: 4, c: "#cfcfcf" }, { x: 2, y: 4, c: "#f7f7f7" }, { x: 3, y: 4, c: "#ffffff" }, { x: 4, y: 4, c: "#ffffff" }, { x: 5, y: 4, c: "#ffffff" }, { x: 6, y: 4, c: "#ffffff" }, { x: 7, y: 4, c: "#ffffff" },
+    { x: 1, y: 5, c: "#bdbdbd" }, { x: 2, y: 5, c: "#ececec" }, { x: 3, y: 5, c: "#ffffff" }, { x: 4, y: 5, c: "#ffffff" }, { x: 5, y: 5, c: "#ffffff" }, { x: 6, y: 5, c: "#ffffff" }, { x: 7, y: 5, c: "#ffffff" }, { x: 8, y: 5, c: "#ffffff" }, { x: 9, y: 5, c: "#d4d4d4" },
+    { x: 1, y: 6, c: "#cfcfcf" }, { x: 2, y: 6, c: "#f7f7f7" }, { x: 3, y: 6, c: "#ffffff" }, { x: 4, y: 6, c: "#ffffff" }, { x: 5, y: 6, c: "#ffffff" }, { x: 6, y: 6, c: "#ffffff" }, { x: 7, y: 6, c: "#ffffff" }, { x: 8, y: 6, c: "#f0f0f0" }, { x: 9, y: 6, c: "#bdbdbd" },
+    { x: 1, y: 7, c: "#d9d9d9" }, { x: 2, y: 7, c: "#f3f3f3" }, { x: 3, y: 7, c: "#ffffff" }, { x: 4, y: 7, c: "#ffffff" }, { x: 5, y: 7, c: "#ffffff" }, { x: 6, y: 7, c: "#ffffff" }, { x: 7, y: 7, c: "#efefef" }, { x: 8, y: 7, c: "#c6c6c6" },
+    { x: 3, y: 8, c: "#9b9b9b" }, { x: 4, y: 8, c: "#ffffff" }, { x: 5, y: 8, c: "#ffffff" }, { x: 6, y: 8, c: "#8f8f8f" },
+    { x: 4, y: 9, c: "#7d7d7d" }, { x: 5, y: 9, c: "#7d7d7d" }
   ],
 
 radio: [
