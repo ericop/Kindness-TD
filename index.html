@@ -1,104 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kindness TD</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #1f2a44;
-      color: hotpink;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      padding: 5px;
-      min-height: 100svh;
-      touch-action: manipulation;
-    }
-
-    #topBar {
-      width: min(100%, 780px);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-height: 32px;
-    }
-
-    #title {
-      margin: 0;
-      font-size: 16px;
-      line-height: 1.1;
-    }
-
-    #fullscreenButton {
-      border: 0;
-      border-radius: 999px;
-      background: #ff7ab6;
-      color: #10233f;
-      font: inherit;
-      font-weight: bold;
-      font-size: 12px;
-      line-height: 1;
-      padding: 6px 10px;
-      cursor: pointer;
-    }
-
-    #gameMount {
-      width: min(100%, 780px);
-      display: flex;
-      justify-content: center;
-    }
-
-    #gameMount canvas {
-      border: 2px solid gray;
-      background: #1f2a44;
-      width: 100%;
-      height: auto;
-      max-width: 100%;
-      display: block;
-      touch-action: none;
-    }
-
-    body.fullscreen-mode {
-      padding: 0;
-      gap: 0;
-      background: #0d1630;
-    }
-
-    body.fullscreen-mode #topBar,
-    body.fullscreen-mode #gameMount {
-      width: 100vw;
-      max-width: none;
-      box-sizing: border-box;
-      padding: 4px 8px;
-    }
-
-    body.fullscreen-mode #gameMount {
-      flex: 1;
-      align-items: center;
-      padding-top: 0;
-    }
-
-    body.fullscreen-mode #gameMount canvas {
-      width: 100vw;
-      height: calc(100svh - 40px);
-      max-width: none;
-      border-width: 0;
-      object-fit: contain;
-    }
-  </style>
-</head>
-<body>
-  <div id="topBar">
-    <p id="title">Kindness TD</p>
-    <button id="fullscreenButton" type="button">Full Screen</button>
-  </div>
-  <div id="gameMount"></div>
-  <script defer src="./kindness-core.js"></script>
-  <script defer src="./kindness-td.js"></script>
-</body>
-</html>
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Kindness TD js13k</title><body style="margin:0;background:#123;overflow:hidden;display:grid;place-items:center;height:100vh"><canvas id=c width=800 height=420 style="width:100vw;height:100vh;display:block;touch-action:none"></canvas><script>
+let x=c.getContext("2d"),W=()=>800,H=()=>420,G=40,M=9,Y=G*M,U=["Hug","Dog","Words","Radio"],K=[30,70,20,50],S=0,C=100,m=0,Q=5,R=0,Z=10,N=0,P=0,F=0,L=[],E=[],J=[],A=[],T=[],V=[],O={x:0,y:4},I={x:19,y:4},h={x:670,y:12,w:118,h:48},k={x:-1,y:-1},z="",D=0;
+f=(a,b)=>a+","+b;
+n=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+u=e=>({x:(e.clientX-c.getBoundingClientRect().left)*c.width/c.getBoundingClientRect().width,y:(e.clientY-c.getBoundingClientRect().top)*c.height/c.getBoundingClientRect().height});
+t=(a,b)=>({x:a*G+G/2,y:b*G+G/2});
+e=(a,b,c,d)=>{let o=[[a,b]],p={},s={[f(a,b)]:1},i=0,k,y,j;for(;i<o.length;i++){k=o[i];if(k[0]==c&&k[1]==d){y=[];for(j=f(c,d);j;j=p[j]){j=j.split(",");y.push({x:+j[0],y:+j[1]})}return y.reverse()}for(let v of[[1,0],[-1,0],[0,1],[0,-1]])j=k[0]+v[0],v=k[1]+v[1],j>-1&&v>-1&&j<20&&v<9&&!bq(j,v)&&!s[f(j,v)]&&(s[f(j,v)]=1,p[f(j,v)]=f(k[0],k[1]),o.push([j,v]))}};
+bq=(a,b)=>L.some(v=>v.gx==a&&v.gy==b)||a<0||b<0||a>19||b>8||a==O.x&&b==O.y||a==I.x&&b==I.y||(a*G<h.x+h.w&&a*G+G>h.x&&b*G<h.y+h.h&&b*G+G>h.y);
+w=(a,b)=>{if(bq(a,b)||C<K[S])return 0;L.push({gx:a,gy:b,t:S,cd:0});let o=e(O.x,O.y,I.x,I.y);if(!o)return L.pop(),0;for(let p of E)p.p=e(p.cx,p.cy,I.x,I.y)||p.p;return 1};
+s=()=>{let a=[];for(let b=0;b<4;b++)a.push([12+b*96,H()-46,90,34]);a.push([W()-120,H()-46,108,34]);return a};
+l=(a,b,c=1)=>{x.fillStyle=b;x.beginPath();x.arc(a.x,a.y,10*c,0,7);x.fill();x.fillStyle="#111";x.beginPath();x.arc(a.x-3*c,a.y-2*c,1.4*c,0,7);x.arc(a.x+3*c,a.y-2*c,1.4*c,0,7);x.fill();x.strokeStyle="#111";x.lineWidth=1.5*c;x.beginPath();a.ha?x.arc(a.x,a.y+2*c,4*c,.15*3.14,.85*3.14):x.arc(a.x,a.y+7*c,4*c,1.15*3.14,1.85*3.14);x.stroke();if(a.tr&1){x.strokeStyle="#a7f";x.lineWidth=3*c;x.beginPath();x.arc(a.x,a.y-4*c,11*c,3.14,6.28);x.stroke()}if(a.tr&2){x.fillStyle="#eef";x.fillRect(a.x-6*c,a.y+1*c,12*c,4*c)}if(a.tr&4){x.strokeStyle="#f68";x.beginPath();x.moveTo(a.x-8*c,a.y);x.lineTo(a.x-2*c,a.y+6*c);x.moveTo(a.x+8*c,a.y);x.lineTo(a.x+2*c,a.y+6*c);x.stroke()}if(a.hp&&a.mh){x.fillStyle="#400";x.fillRect(a.x-10*c,a.y-18*c,20*c,3*c);x.fillStyle="#6f6";x.fillRect(a.x-10*c,a.y-18*c,20*c*(1-a.hp/a.mh),3*c)}};
+cr=(a,b,c,d,o)=>E.push({cx:O.x,cy:O.y,x:t(O.x,O.y).x,y:t(O.x,O.y).y,p:e(O.x,O.y,I.x,I.y),i:0,sp:36+d*3+(o?4:0),hp:a,mh:a,tr:b,ha:0,fr:0,go:0,st:c,b:o});
+nr=()=>{R++;let a=20+R*6,b=.75-.04*R;if(R==5||R==10)a=35,cr(R==5?260:340,R==5?1:0,0,R,1);for(let c=0;c<a;c++)cr(36+R*4+(c%5==0?8:0),(R>1&&c%6==5)+(R>2&&c%7==3)*2+(R>3&&c%8==4)*4,c*b,R,0);N=1;z="Round "+R;D=2.5};
+hit=(a,b,c,d)=>{if(a.go||a.ha||a.hp<=0||a.tr&d)return 0;a.hp=Math.max(0,a.hp-b);a.fr=c;return 1};
+pick=(a,b,c)=>{let d,o=1e9,p;for(let v of E)!v.go&&!v.ha&&!v.st&&!(v.tr&c)&&(p=n(a,v))<b&&p<o&&(o=p,d=v);return d};
+addEventListener("pointermove",a=>k=u(a));
+re=()=>{C=100;m=0;R=0;L=[];E=[];J=[];A=[];T=[];V=[];N=0;F=0;P=0;z="Kindness TD";D=1};
+addEventListener("pointerdown",a=>{a=u(a);let b=s();for(let c=0;c<4;c++)if(a.x>b[c][0]&&a.x<b[c][0]+b[c][2]&&a.y>b[c][1]&&a.y<b[c][1]+b[c][3])return void(S=c);if(a.x>b[4][0]&&a.x<b[4][0]+b[4][2]&&a.y>b[4][1]&&a.y<b[4][1]+b[4][3])return void(F||P?(re(),nr()):!R?nr():!N&&!E.length&&R<Z&&nr());if(F||P||a.y>Y)return;let c=a.x/G|0,d=a.y/G|0;w(c,d)&&(z=U[S],D=.6)});
+upd=a=>{if(F||P)return;D&&(D-=a);for(let b of L)b.cd-=a;for(let b of E){if(b.st>0){b.st-=a;continue}if(b.hp<1&&!b.ha)b.ha=1,C+=b.b?25:6,V.push({x:b.x,y:b.y,t:1,s:"+"+(b.b?25:6)});if(b.ha){let c={x:h.x+h.w/2,y:h.y+h.h/2},d=n(b,c);d<5?b.go=1:(b.x+=(c.x-b.x)/d*b.sp*a*1.4,b.y+=(c.y-b.y)/d*b.sp*a*1.4);continue}if(b.fr>0){b.fr-=a;continue}let c=b.p[b.i+1];if(!c){m++;b.go=1;continue}c=t(c.x,c.y);let d=n(b,c),o=b.sp*a;d<=o?(b.x=c.x,b.y=c.y,b.i++,b.cx=b.p[b.i].x,b.cy=b.p[b.i].y):(b.x+=(c.x-b.x)/d*o,b.y+=(c.y-b.y)/d*o)}E=E.filter(a=>!a.go);for(let b of L){let c={x:b.gx*G+20,y:b.gy*G+20};if(b.t<2){let d=pick(c,b.t?110:65,b.t?2:4);if(d){b.t?hit(d,14*a,.03,2)&&(d.x+=(c.x-d.x)*.02,d.y+=(c.y-d.y)*.02):hit(d,38*a,.05,4)&&(d.fr=.07),A.push({x:c.x,y:c.y,u:d.x,v:d.y,t:b.t?1:.06,r:b.t?3:0})}}else if(b.t==2){if(b.cd<=0){let d=pick(c,160,1);d&&(J.push({x:c.x,y:c.y,e:d,s:180}),b.cd=.45)}}else for(let d of E)n(c,d)<105&&hit(d,9*a,.03,1)&&(A.push({x:d.x,y:d.y,t:.08,r:0}))}for(let b of J){let c=n(b,b.e);c<8?(hit(b.e,18,.05,1),T.push({x:b.x,y:b.y,t:.5,s:"you got this"}),b.s=0):(b.x+=(b.e.x-b.x)/c*b.s*a,b.y+=(b.e.y-b.y)/c*b.s*a)}J=J.filter(a=>a.s);for(let b of A)b.t-=a,b.r+=3*a;A=A.filter(a=>a.t>0);for(let b of T)b.y-=18*a,b.t-=a;T=T.filter(a=>a.t>0);for(let b of V)b.y-=22*a,b.t-=a;V=V.filter(a=>a.t>0);N&&E.every(a=>a.st>0||a.go||a.ha)&&!E.some(a=>!a.go&&!a.ha&&a.st>0)&&(N=0);!N&&!E.length&&R>=Z&&(P=1);m>=Q&&(F=1)};
+dr=()=>{x.fillStyle="#10253f";x.fillRect(0,0,W(),H());x.fillStyle="#17385c";x.fillRect(0,0,W(),Y);x.strokeStyle="rgba(255,255,255,.08)";for(let a=0;a<=20;a++)x.beginPath(),x.moveTo(a*G,0),x.lineTo(a*G,Y),x.stroke();for(let a=0;a<=9;a++)x.beginPath(),x.moveTo(0,a*G),x.lineTo(20*G,a*G),x.stroke();let a=e(O.x,O.y,I.x,I.y)||[];x.lineWidth=18;x.strokeStyle="#6a7788";x.beginPath();for(let b=0;b<a.length;b++){let c=t(a[b].x,a[b].y);b?x.lineTo(c.x,c.y):x.moveTo(c.x,c.y)}x.stroke();x.fillStyle="#295b3c";x.fillRect(h.x,h.y,h.w,h.h);x.strokeStyle="#cfe";x.strokeRect(h.x,h.y,h.w,h.h);x.fillStyle="#fff";x.font="16px sans-serif";x.fillText("Happy Hangout",h.x+8,h.y+29);if(k.y<Y){let b=k.x/G|0,c=k.y/G|0;x.fillStyle=wq(b,c)?"rgba(80,255,140,.25)":"rgba(255,80,80,.25)";x.fillRect(b*G,c*G,G,G)}for(let b of L){let c={x:b.gx*G+20,y:b.gy*G+20};x.fillStyle=["#f8a","#db9","#fff","#7cf"][b.t];x.beginPath();x.arc(c.x,c.y,12,0,7);x.fill();x.fillStyle="#123";x.font="bold 12px sans-serif";x.textAlign="center";x.fillText("HDWR"[b.t],c.x,c.y+4)}for(let b of A)x.strokeStyle=b.r?"#adf":"#f8a",x.beginPath(),x.arc(b.x,b.y,8+b.r,0,7),x.stroke();for(let b of J)x.fillStyle="#fff",x.beginPath(),x.arc(b.x,b.y,4,0,7),x.fill();for(let b of E)l(b,b.b?"#fc7":b.ha?"#fd7":"#9aa",b.b?1.5:1);x.textAlign="left";x.fillStyle="#fff";x.font="16px sans-serif";x.fillText("Care "+C,12,14);x.fillText("Round "+R+"/"+Z,12,34);x.fillText("Missed "+m+"/"+Q,12,54);D&&(x.textAlign="center",x.fillStyle="#fff",x.font="bold 24px sans-serif",x.fillText(z,W()/2,28));for(let b of T)x.fillStyle="#fff",x.font="12px sans-serif",x.textAlign="center",x.fillText(b.s,b.x,b.y);for(let b of V)x.fillStyle="#f9a",x.font="bold 14px sans-serif",x.textAlign="center",x.fillText(b.s,b.x,b.y);let b=s();for(let c=0;c<4;c++)x.fillStyle=c==S?"#ff7ab6":"#345",x.fillRect(...b[c]),x.strokeStyle="#fff",x.strokeRect(...b[c]),x.fillStyle="#fff",x.font="12px sans-serif",x.textAlign="center",x.fillText(U[c]+" "+K[c],b[c][0]+45,b[c][1]+21);x.fillStyle=F||P||!R||!N&&!E.length?"#2d8":N?"#777":"#567";x.fillRect(...b[4]);x.strokeStyle="#fff";x.strokeRect(...b[4]);x.fillStyle="#fff";x.fillText(F||P?"Again":!R?"Start":N||E.length?"Wave Live":"Next Round",b[4][0]+54,b[4][1]+21);if(F||P){x.fillStyle="rgba(0,0,0,.72)";x.fillRect(0,0,W(),H());x.fillStyle="#fff";x.font="bold 34px sans-serif";x.textAlign="center";x.fillText(P?"Kindness Wins":"Too Many Grumpies Escaped",W()/2,H()/2-20);x.font="18px sans-serif";x.fillText("Use the button below to play again.",W()/2,H()/2+18)}};
+wq=(a,b)=>{if(bq(a,b)||C<K[S])return 0;L.push({gx:a,gy:b});let o=!!e(O.x,O.y,I.x,I.y);return L.pop(),o};
+let p=performance.now();(function a(b){let c=(b-p)/1e3;p=b;upd(c);dr();requestAnimationFrame(a)})(p);
+</script>
