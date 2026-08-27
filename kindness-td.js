@@ -15,6 +15,10 @@ const DOG_ALLERGY_GRUMPY_INTERVAL = 6;
 const DOG_ALLERGY_GRUMPY_OFFSET = 2;
 const NO_HUG_GRUMPY_INTERVAL = 6;
 const NO_HUG_GRUMPY_OFFSET = 4;
+// 7 % 6 === 1, which is the one residue the three mod-6 traits above leave
+// free, so a Stress Eater never doubles up with headphones, a mask or thorns.
+const STRESS_EATER_INTERVAL = 12;
+const STRESS_EATER_OFFSET = 7;
 const BASE_SPAWN_DELAY = 0.6;
 const ROUND_SPAWN_SPEEDUP = 0.9;
 const instructionButton = {
@@ -64,6 +68,11 @@ function getInstructionPages(roundNumber) {
           ? intro + " You are playing Advanced Mode: every grumpy and boss starts with twice the sadness, so each one needs twice as much kindness!"
           : intro
       },
+      ...(state.advancedMode ? [{
+        title: "The Stress Eater",
+        body: "Advanced Mode brings the Stress Eater. Cookies are scattered around town and he heads straight for the nearest one instead of the exit, stopping to nibble. He has twice the sadness of a normal grumpy, so use the time he wastes snacking.",
+        icon: { isStressEater: true }
+      }] : []),
       {
         title: "Meet HappyHorn",
         body: "HappyHorn the Unicorn is your hero. She flies circles around the nearest grumpy, painting a rainbow that cheers up every grumpy it touches. Only one at a time, so save up for her.",
@@ -158,6 +167,13 @@ function refreshGrumpyPaths() {
   state.grumpies.forEach(grumpy => {
     if (grumpy.isHappy || grumpy.reachedEnd) return;
 
+    // A Stress Eater is heading for a cookie, not the exit, so he gets
+    // repathed to his own goal instead.
+    if (grumpy.isStressEater) {
+      retargetStressEater(grumpy);
+      return;
+    }
+
     const startCell = getCell(grumpy.x, grumpy.y);
     const path = findPath(
       { x: startCell.cx, y: startCell.cy },
@@ -207,9 +223,13 @@ function createStandardRoundGrumpy(roundNumber, index, spawnDelay) {
       index % DOG_ALLERGY_GRUMPY_INTERVAL === DOG_ALLERGY_GRUMPY_OFFSET,
     avoidsHugs:
       roundNumber >= 4 &&
-      index % NO_HUG_GRUMPY_INTERVAL === NO_HUG_GRUMPY_OFFSET
+      index % NO_HUG_GRUMPY_INTERVAL === NO_HUG_GRUMPY_OFFSET,
+    isStressEater:
+      state.advancedMode &&
+      index % STRESS_EATER_INTERVAL === STRESS_EATER_OFFSET
   });
-  g.path = findPath(START, END) || [];
+  if (g.isStressEater) retargetStressEater(g);
+  else g.path = findPath(START, END) || [];
   return g;
 }
 
@@ -222,6 +242,7 @@ function startRound(roundNumber) {
   placementMenu.active = false;
   textBubbles.length = 0;
   rainbowTrail.length = 0;
+  spawnCookies();
   resetBuddyTargets();
 
   if (roundNumber === 5) {
@@ -574,6 +595,28 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
     }
   }
 
+  // The Stress Eater carries his snack, which is what tells him apart at a
+  // glance; the extra 1.25 scale reads as the doubled sad meter.
+  if (grumpy.isStressEater && !grumpy.isHappy) {
+    drawCookie(ctx, grumpy.x + 10 * scale, grumpy.y + 5 * scale, 5 * scale);
+
+    if (grumpy.eatTimer > 0) {
+      ctx.fillStyle = "#d79a55";
+      for (let i = 0; i < 3; i++) {
+        const a = i * 2.1 + grumpy.eatTimer * 4;
+        ctx.beginPath();
+        ctx.arc(
+          grumpy.x + Math.cos(a) * 13 * scale,
+          grumpy.y + 8 * scale + Math.sin(a) * 3 * scale,
+          1.4 * scale,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
+    }
+  }
+
   if(grumpy.isHugged){
     ctx.strokeStyle='pink';
     const t=performance.now()*0.005;
@@ -591,7 +634,14 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
     ctx.font = `${Math.max(12, 12 * scale)}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    ctx.fillText(grumpy.name, grumpy.x, grumpy.y - radius - 8);
+    // Named grumpies spawn hard against the left edge, where a centred label
+    // gets its first few letters cut off. Keep the whole label on canvas.
+    const half = ctx.measureText(grumpy.name).width / 2;
+    ctx.fillText(
+      grumpy.name,
+      clamp(grumpy.x, half + 4, canvas.width - half - 4),
+      grumpy.y - radius - 8
+    );
   }
 }
 
@@ -613,6 +663,7 @@ function startGame(advancedMode = false) {
   radioBuddies.length = 0;
   unicorns.length = 0;
   rainbowTrail.length = 0;
+  cookies.length = 0;
   grid.blocked.clear();
   textBubbles.length = 0;
   beginRoundFlow(1);
@@ -626,10 +677,13 @@ function createGrumpy(delay=0, options = {}){
   const hasDogAllergy = !!options.hasDogAllergy;
   const avoidsHugs = !!options.avoidsHugs;
   const isBoss = !!options.isBoss;
+  const isStressEater = !!options.isStressEater;
   const hpMultiplier = state.advancedMode ? 2 : 1;
+  // Double a normal grumpy of the same round, on top of the Advanced doubling.
+  const stressEaterMultiplier = isStressEater ? 2 : 1;
   const roundHpBonus = Math.max(0, state.currentRound - 1);
   const baseSad = isBoss ? (options.bossHp || 1000) : 100;
-  const maxSad = (baseSad + roundHpBonus) * hpMultiplier;
+  const maxSad = (baseSad + roundHpBonus) * hpMultiplier * stressEaterMultiplier;
   return {
     x: START.x*GRID_SIZE+20,
     y: START.y*GRID_SIZE+20,
@@ -643,8 +697,11 @@ function createGrumpy(delay=0, options = {}){
     hasDogAllergy,
     avoidsHugs,
     isBoss,
-    scale:isBoss ? 1.5 : 1,
-    name:isBoss ? (options.bossName || "Negative Neil") : "",
+    isStressEater,
+    targetCookie:null,
+    eatTimer:0,
+    scale:isBoss ? 1.5 : isStressEater ? 1.25 : 1,
+    name:isBoss ? (options.bossName || "Negative Neil") : isStressEater ? "Stress Eater" : "",
     allergicToDogs: hasDogAllergy,
     ignoresAffirmations: hasHeadphones,
     ignoresRadio: hasHeadphones,
@@ -683,6 +740,13 @@ function createGrumpy(delay=0, options = {}){
         return;
       }
 
+      // Parked at a cookie. Standing still is the whole point: it is time the
+      // player's buddies get for free.
+      if (this.eatTimer > 0) {
+        this.eatTimer -= dt;
+        return;
+      }
+
       const node=this.path[this.pathIndex];
       if(node){
         const tx=node.x*GRID_SIZE+20;
@@ -696,6 +760,21 @@ function createGrumpy(delay=0, options = {}){
           this.x+=(dx/d)*this.speed*dt;
           this.y+=(dy/d)*this.speed*dt;
         }
+      } else if (this.isStressEater && this.targetCookie && !this.targetCookie.eaten) {
+        // Arrived at a cookie rather than the exit, so this is not an escape.
+        this.targetCookie.eaten = true;
+        this.targetCookie = null;
+        this.eatTimer = COOKIE_EAT_TIME;
+        textBubbles.push({
+          text: "nom nom",
+          x: this.x,
+          y: this.y - 22,
+          target: null,
+          life: 1.2,
+          speed: 0,
+          hit: false
+        });
+        retargetStressEater(this);
       } else if(!this.reachedEnd){
         this.reachedEnd=true;
         this.active=false;
@@ -709,6 +788,104 @@ function createGrumpy(delay=0, options = {}){
       drawGrumpySprite(ctx, this, true);
     }
   };
+}
+
+// =========================
+// COOKIES
+// The Stress Eater detours to these instead of walking for the exit, which
+// buys the player time. Advanced Mode only, since that is where he spawns.
+// =========================
+const cookies = [];
+const COOKIE_COUNT = 6;
+const COOKIE_EAT_TIME = 1.6;   // seconds parked per cookie
+const COOKIE_RADIUS = 9;
+
+function spawnCookies() {
+  cookies.length = 0;
+  if (!state.advancedMode) return;
+
+  const candidates = [];
+  for (let cy = 0; cy < grid.rows; cy++) {
+    for (let cx = 0; cx < grid.cols; cx++) {
+      // Skip the spawn row so every cookie is an actual detour, and keep off
+      // blocked cells and the Happy Hangout.
+      if (cy === START.y) continue;
+      if (grid.blocked.has(cellKey(cx, cy))) continue;
+      if (doesCellOverlapRect(cx, cy, HAPPY_HANGOUT)) continue;
+      if (!findPath(START, { x: cx, y: cy })) continue;
+      candidates.push({ cx, cy });
+    }
+  }
+
+  for (let i = 0; i < COOKIE_COUNT && candidates.length; i++) {
+    const pick = candidates.splice((Math.random() * candidates.length) | 0, 1)[0];
+    cookies.push({
+      cx: pick.cx,
+      cy: pick.cy,
+      x: pick.cx * GRID_SIZE + 20,
+      y: pick.cy * GRID_SIZE + 20,
+      eaten: false
+    });
+  }
+}
+
+function cookieAtCell(cx, cy) {
+  return cookies.find(c => !c.eaten && c.cx === cx && c.cy === cy);
+}
+
+// Send a Stress Eater to the nearest cookie he can actually reach, or to the
+// exit once the plate is empty. Unreachable cookies are skipped rather than
+// leaving him with an empty path, which the mover would read as escaping.
+function retargetStressEater(grumpy) {
+  const startCell = getCell(grumpy.x, grumpy.y);
+  const from = { x: startCell.cx, y: startCell.cy };
+
+  const reachable = cookies
+    .filter(c => !c.eaten)
+    .map(c => ({ cookie: c, path: findPath(from, { x: c.cx, y: c.cy }) }))
+    .filter(entry => entry.path);
+
+  if (reachable.length) {
+    reachable.sort((a, b) => a.path.length - b.path.length);
+    grumpy.targetCookie = reachable[0].cookie;
+    grumpy.path = reachable[0].path;
+    grumpy.pathIndex = 0;
+    return;
+  }
+
+  grumpy.targetCookie = null;
+  const exitPath = findPath(from, END);
+  if (exitPath) {
+    grumpy.path = exitPath;
+    grumpy.pathIndex = 0;
+  }
+}
+
+function drawCookie(ctx, x, y, r) {
+  ctx.fillStyle = "#a9682f";
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#d79a55";
+  ctx.beginPath();
+  ctx.arc(x - r * 0.18, y - r * 0.18, r * 0.72, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#4a2a12";
+  const chips = [[-0.36, -0.08], [0.24, -0.36], [0.12, 0.34], [-0.1, 0.05]];
+  for (const [dx, dy] of chips) {
+    ctx.beginPath();
+    ctx.arc(x + dx * r, y + dy * r, r * 0.17, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCookies(ctx) {
+  cookies.forEach(c => {
+    if (c.eaten) return;
+    drawCookie(ctx, c.x, c.y, COOKIE_RADIUS);
+  });
 }
 
 // =========================
@@ -1195,8 +1372,9 @@ function updatePreviewAtCell(cx, cy) {
   const isInsideGrid = cx >= 0 && cy >= 0 && cx < grid.cols && cy < grid.rows;
   const isSpawnCell = cx === START.x && cy === START.y;
   const isHappyHangoutCell = doesCellOverlapRect(cx, cy, HAPPY_HANGOUT);
+  const isCookieCell = !!cookieAtCell(cx, cy);
 
-  if (!isInsideGrid || isSpawnCell || isHappyHangoutCell || grid.blocked.has(key)) {
+  if (!isInsideGrid || isSpawnCell || isHappyHangoutCell || isCookieCell || grid.blocked.has(key)) {
     preview.valid = false;
     return;
   }
@@ -1301,6 +1479,10 @@ if (state.gameMode === "menu") {
 function placeBuddy(cx,cy,buddyType=selectedBuddy){
   if(!canPlaceBuddy(buddyType)) return;
   if (doesCellOverlapRect(cx, cy, HAPPY_HANGOUT)) return;
+  // Would hide the cookie and can wall it off from the Stress Eater. The
+  // preview already refuses these cells; this is the same guard as the
+  // Happy Hangout one above, so the rule holds however placeBuddy is reached.
+  if (cookieAtCell(cx, cy)) return;
 
   state.careCredits-=buddyCosts[buddyType];
 
@@ -1715,7 +1897,9 @@ function draw(){
           hasDogAllergy: !!page.icon.hasDogAllergy,
           avoidsHugs: !!page.icon.avoidsHugs,
           isBoss: !!page.icon.isBoss,
-          scale: page.icon.isBoss ? 1.5 : 1,
+          isStressEater: !!page.icon.isStressEater,
+          eatTimer: 0,
+          scale: page.icon.isBoss ? 1.5 : page.icon.isStressEater ? 1.25 : 1,
           name: page.icon.isBoss ? (page.icon.bossName || "Negative Neil") : ""
         },
         false
@@ -1826,6 +2010,7 @@ function draw(){
   //   ctx.arc(t.x,t.y,12,0,Math.PI*2);
   //   ctx.fill();
   // });
+  drawCookies(ctx);
   drawRainbowTrail(ctx);
 
   hugBuddies.forEach((t,i)=>{
