@@ -70,6 +70,12 @@ Lose:
 - AoE passive
 - Low sadness reduction
 
+### HappyHorn the Unicorn (hero)
+- Hero unit, limited to one on the field
+- Auto-circles the nearest grumpy instead of standing still
+- Leaves a fading rainbow trail; the trail itself cheers up grumpies it touches
+- This is our hook into the 2026 "Unicorns and Rainbows" theme
+
 ---
 
 ## Architecture Rules (VERY IMPORTANT)
@@ -154,11 +160,23 @@ If unsure:
 
 ## JS13K Constraints (IMPORTANT)
 
+Kindness TD targets **js13kGames 2026**. The 2026 theme is
+**Unicorns and Rainbows**, and the theme is a scored rating criterion.
+
+- The submitted `.zip` must be **13,312 bytes or less**
+- `index.html` must be at the top level of the zip and playable once unzipped
+- **No external resources** at all: no CDNs, no web fonts, no analytics
+- Must run with **no console errors** in latest Chrome and Firefox
+- If storage is ever added, namespace keys (`ktd:`) and never call
+  `localStorage.clear()` - games on the site share one origin
 - Keep code size small
-- Avoid dependencies
+- Avoid runtime dependencies
 - Reuse logic where possible
 - Avoid duplication
 - Prefer simple math over libraries
+
+Run `npm run build` after changes: it produces `dist/kindness-td.zip` and fails
+if the package goes over budget. Full checklist in `JS13K-2026.md`.
 
 ---
 
