@@ -67,7 +67,7 @@ function getInstructionPages(roundNumber) {
         body:
           "This game is all about kindness and spreading love to people who have grumpy hearts, so they can go hang out in the Happy Hangout. Build towers to do this. " +
           advancedLead +
-          " starts with twice the sad meter, so each one needs twice as much kindness."
+          " starts with twice the sadness, so each one needs twice as much kindness!"
       },
       {
         title: "Meet HappyHorn",
