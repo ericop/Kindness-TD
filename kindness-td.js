@@ -549,7 +549,10 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
     ctx.stroke();
   }
 
-  if (grumpy.avoidsHugs) {
+  // Thorns drop away once they cheer up: nothing is left to warn the player
+  // about, and softening as they head for the Happy Hangout is the whole point
+  // of the game.
+  if (grumpy.avoidsHugs && !grumpy.isHappy) {
     // Prickly. The thorns change the silhouette rather than adding detail
     // inside it, so a no-hug grumpy can be picked out of a moving queue
     // without looking straight at them. Thorn tips stop at 13.5, which keeps
