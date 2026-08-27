@@ -880,22 +880,34 @@ function retargetStressEater(grumpy) {
   }
 }
 
+// A tan disc with four chips, one loosely per quadrant. The offsets are
+// deliberately uneven so it reads as scattered rather than as the four-face of
+// a die, and no two chips share a row - the previous set had two chips at
+// nearly the same height, which read as a line rather than as chips.
+const COOKIE_CHIPS = [
+  [-0.40, -0.14],
+  [ 0.16, -0.40],
+  [-0.16,  0.34],
+  [ 0.38,  0.20]
+];
+
 function drawCookie(ctx, x, y, r) {
-  ctx.fillStyle = "#a9682f";
+  ctx.fillStyle = "#d79a55";
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#d79a55";
+  // Darker rim, so the disc still has an edge against the navy field.
+  ctx.strokeStyle = "#a9682f";
+  ctx.lineWidth = Math.max(1, r * 0.16);
   ctx.beginPath();
-  ctx.arc(x - r * 0.18, y - r * 0.18, r * 0.72, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(x, y, r * 0.92, 0, Math.PI * 2);
+  ctx.stroke();
 
   ctx.fillStyle = "#4a2a12";
-  const chips = [[-0.36, -0.08], [0.24, -0.36], [0.12, 0.34], [-0.1, 0.05]];
-  for (const [dx, dy] of chips) {
+  for (const [dx, dy] of COOKIE_CHIPS) {
     ctx.beginPath();
-    ctx.arc(x + dx * r, y + dy * r, r * 0.17, 0, Math.PI * 2);
+    ctx.arc(x + dx * r, y + dy * r, r * 0.2, 0, Math.PI * 2);
     ctx.fill();
   }
 }
