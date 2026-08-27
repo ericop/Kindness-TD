@@ -50,29 +50,6 @@ function getSpawnDelayForRound(roundNumber) {
   return BASE_SPAWN_DELAY * Math.pow(ROUND_SPAWN_SPEEDUP, roundNumber - 1);
 }
 
-function pointInRect(x, y, rect) {
-  return (
-    x >= rect.x &&
-    x <= rect.x + rect.w &&
-    y >= rect.y &&
-    y <= rect.y + rect.h
-  );
-}
-
-function doesCellOverlapRect(cx, cy, rect) {
-  const cellLeft = cx * GRID_SIZE;
-  const cellTop = cy * GRID_SIZE;
-  const cellRight = cellLeft + GRID_SIZE;
-  const cellBottom = cellTop + GRID_SIZE;
-
-  return (
-    cellLeft < rect.x + rect.width &&
-    cellRight > rect.x &&
-    cellTop < rect.y + rect.height &&
-    cellBottom > rect.y
-  );
-}
-
 function getInstructionPages(roundNumber) {
   if (roundNumber === 1) {
     return [
