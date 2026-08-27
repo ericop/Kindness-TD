@@ -830,12 +830,17 @@ function applyTherapyDogs(dt){
   });
 }
 
+// No phrase here should read as encouragement to walk on: a grumpy reaching
+// the exit still sad is the lose condition. "keep going" cheered them toward
+// it, so it is gone.
 const affirmations=[
   "you're great",
   "you can do it",
   "i love you",
-  "keep going",
-  "you're valued"
+  "you're valued",
+  "you belong",
+  "stay a while",
+  "you matter"
 ];
 const textBubbles=[];
 
