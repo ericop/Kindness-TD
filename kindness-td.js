@@ -1596,7 +1596,7 @@ function draw(){
       ctx.fillStyle = "#ffd7e8";
       wrapText(
         ctx,
-        "This game was made by EricOP, Asa, Thea, Codex, and Claude. Codex and Claude were our hard working robotic partners.",
+        "This game was made by EricOP, Asa, and Thea. Codex and Claude were our hard-working robotic partners.",
         canvas.width / 2,
         138,
         270,
