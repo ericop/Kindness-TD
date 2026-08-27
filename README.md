@@ -38,7 +38,7 @@ checklist.
 
 - Click `Start Game`.
 - Move the cursor to choose a grid cell.
-- Click once to open the tower build menu around the preview.
+- Click once to open the tower build menu beside the preview.
 - Click a tower choice to place it.
 - Stop too many sad grumpies from reaching the exit.
 

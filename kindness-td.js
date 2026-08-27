@@ -298,12 +298,16 @@ const towerCosts = {
 };
 
 const buildMenuButtons = [
-  { label: "Hugger", towerType: "hug", direction: "up" },
-  { label: "TherapyDog", towerType: "dog", direction: "right" },
-  { label: "AffirmingWords", towerType: "affirm", direction: "down" },
-  { label: "GladRadio", towerType: "radio", direction: "left" },
-  { label: "HappyHorn", towerType: "unicorn", direction: "upRight" }
+  { label: "Hugger", towerType: "hug" },
+  { label: "TherapyDog", towerType: "dog" },
+  { label: "AffirmingWords", towerType: "affirm" },
+  { label: "GladRadio", towerType: "radio" },
+  { label: "HappyHorn", towerType: "unicorn" }
 ];
+
+const BUILD_MENU_COLS = 2;
+const BUILD_MENU_GAP = 4;
+const BUILD_MENU_TOP = 44;   // clears the Pause button
 const TOWER_PIXEL_DIM = 10;
 
 // =========================
@@ -1066,28 +1070,37 @@ function getPlacementMenuButtons(cx, cy) {
   const width = prefersCoarsePointer ? 140 : 116;
   const height = prefersCoarsePointer ? 40 : 28;
 
-  return buildMenuButtons.map(button => {
-    let x = centerX - width / 2;
-    let y = centerY - height / 2;
+  const rows = Math.ceil(buildMenuButtons.length / BUILD_MENU_COLS);
+  const blockWidth = BUILD_MENU_COLS * width + (BUILD_MENU_COLS - 1) * BUILD_MENU_GAP;
+  const blockHeight = rows * height + (rows - 1) * BUILD_MENU_GAP;
 
-    if (button.direction === "up") y = centerY - GRID_SIZE - height - 4;
-    if (button.direction === "down") y = centerY + GRID_SIZE + 4;
-    if (button.direction === "left") x = centerX - GRID_SIZE - width - 4;
-    if (button.direction === "right") x = centerX + GRID_SIZE + 4;
+  // The menu sits beside the selected cell so the placement preview underneath
+  // stays visible. Clamping the block as a whole, rather than each button on
+  // its own, is what keeps buttons off each other near an edge: a button's
+  // position is a fixed offset inside the block. The old per-direction layout
+  // could not fit a fifth button, because each button is far wider than the
+  // 40px cell and so any diagonal overlapped a cardinal one.
+  const gapFromCell = GRID_SIZE / 2 + BUILD_MENU_GAP;
+  const fitsOnRight = centerX + gapFromCell + blockWidth + 4 <= canvas.width;
 
-    if (button.direction === "upRight") {
-      x = centerX + GRID_SIZE + 4;
-      y = centerY - GRID_SIZE - height - 4;
-    }
+  const blockX = clamp(
+    fitsOnRight ? centerX + gapFromCell : centerX - gapFromCell - blockWidth,
+    4,
+    canvas.width - blockWidth - 4
+  );
+  const blockY = clamp(
+    centerY - blockHeight / 2,
+    BUILD_MENU_TOP,
+    canvas.height - blockHeight - 4
+  );
 
-    return {
-      ...button,
-      x: clamp(x, 4, canvas.width - width - 4),
-      y: clamp(y, 4, canvas.height - height - 4),
-      w: width,
-      h: height
-    };
-  });
+  return buildMenuButtons.map((button, index) => ({
+    ...button,
+    x: blockX + (index % BUILD_MENU_COLS) * (width + BUILD_MENU_GAP),
+    y: blockY + Math.floor(index / BUILD_MENU_COLS) * (height + BUILD_MENU_GAP),
+    w: width,
+    h: height
+  }));
 }
 
 function getPlacementMenuButtonAt(x, y) {
