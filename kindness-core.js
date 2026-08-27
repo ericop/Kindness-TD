@@ -146,7 +146,6 @@ const state = {
   win: false,
   careCredits: 100,
   gameMode: "menu",
-  waveTextTimer: 0,
   pendingRound: 1,
   instructionPages: [],
   instructionPageIndex: 0,

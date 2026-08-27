@@ -9,6 +9,7 @@ const HAPPY_HANGOUT = {
   height: 70
 };
 const BASE_ROUND_SPAWN = 25;
+const BOSS_MINION_COUNT = 50;
 const ROUND_SPAWN_INCREASE = 10;
 const HEADPHONE_GRUMPY_INTERVAL = 6;
 const DOG_ALLERGY_GRUMPY_INTERVAL = 6;
@@ -50,8 +51,31 @@ function getRoundSpawnCount(roundNumber) {
   return BASE_ROUND_SPAWN + (roundNumber - 1) * ROUND_SPAWN_INCREASE;
 }
 
+// Boss rounds replace the normal spawn count with one boss plus a fixed minion
+// train, so the round intro has to match what startRound will actually build.
+function getRoundGrumpyCount(roundNumber) {
+  const isBossRound = roundNumber === 5 || roundNumber === 10;
+  return isBossRound ? BOSS_MINION_COUNT + 1 : getRoundSpawnCount(roundNumber);
+}
+
 function getSpawnDelayForRound(roundNumber) {
   return BASE_SPAWN_DELAY * Math.pow(ROUND_SPAWN_SPEEDUP, roundNumber - 1);
+}
+
+// The last page of every round's deck. It replaces a banner that faded over
+// the top of gameplay after 2.5s, which could not be read in time and, because
+// it never set a fill colour, drew in whatever shade the previous draw call
+// left behind.
+function getRoundIntroPage(roundNumber) {
+  const hpBonus = Math.max(0, roundNumber - 1);
+  const count = getRoundGrumpyCount(roundNumber);
+
+  let body = `${count} grumpies are heading in. This round beefs them up by +${hpBonus} sad meter.`;
+  if (roundNumber < state.totalRounds) {
+    body += ` Next round adds +${ROUND_SPAWN_INCREASE} grumpies and +1 sad meter.`;
+  }
+
+  return { title: `Round ${roundNumber} Incoming`, body };
 }
 
 function getInstructionPages(roundNumber) {
@@ -135,19 +159,15 @@ function getInstructionPages(roundNumber) {
 }
 
 function beginRoundFlow(roundNumber) {
-  const pages = getInstructionPages(roundNumber);
+  // Always at least one page, so every round opens with a popup the player
+  // dismisses rather than a banner that vanishes on its own.
+  const pages = [...getInstructionPages(roundNumber), getRoundIntroPage(roundNumber)];
 
-  if (pages.length) {
-    state.pendingRound = roundNumber;
-    state.instructionPages = pages;
-    state.instructionPageIndex = 0;
-    state.gameMode = "instructions";
-    placementMenu.active = false;
-    return;
-  }
-
-  startRound(roundNumber);
-  state.gameMode = "playing";
+  state.pendingRound = roundNumber;
+  state.instructionPages = pages;
+  state.instructionPageIndex = 0;
+  state.gameMode = "instructions";
+  placementMenu.active = false;
 }
 
 function moveToHappyHangout(grumpy, dt) {
@@ -238,7 +258,6 @@ function startRound(roundNumber) {
   state.grumpies = [];
   state.happyCount = 0;
   state.totalSpawned = getRoundSpawnCount(roundNumber);
-  state.waveTextTimer = 2.5;
   placementMenu.active = false;
   textBubbles.length = 0;
   rainbowTrail.length = 0;
@@ -246,7 +265,7 @@ function startRound(roundNumber) {
   resetBuddyTargets();
 
   if (roundNumber === 5) {
-    const minionCount = 50;
+    const minionCount = BOSS_MINION_COUNT;
     state.totalSpawned = minionCount + 1;
     const spawnDelay = getSpawnDelayForRound(roundNumber);
     const boss = createGrumpy(0, {
@@ -265,7 +284,7 @@ function startRound(roundNumber) {
   }
 
   if (roundNumber === 10) {
-    const minionCount = 50;
+    const minionCount = BOSS_MINION_COUNT;
     state.totalSpawned = minionCount + 1;
     const spawnDelay = getSpawnDelayForRound(roundNumber);
     const boss = createGrumpy(0, {
@@ -1594,9 +1613,6 @@ function update(dt){
     }
   }
 
-  if(state.waveTextTimer>0){
-    state.waveTextTimer-=dt;
-  }
 }
 
 function drawPixelArt(ctx, x, y, pixels, size=4) {
@@ -2163,29 +2179,6 @@ function draw(){
   }
 
 
-
-  if(state.waveTextTimer>0){
-    const currentRoundHpBonus = Math.max(0, state.currentRound - 1);
-    ctx.font="24px sans-serif";
-    ctx.textAlign="center";
-    ctx.fillText(
-      `Round ${state.currentRound}: ${state.totalSpawned} Grumpies Incoming!`,
-      canvas.width/2,60
-    );
-    ctx.font = "16px sans-serif";
-    ctx.fillText(
-      `This round beefs grumpies up by +${currentRoundHpBonus} sad meter`,
-      canvas.width / 2,
-      86
-    );
-    if (state.currentRound < state.totalRounds) {
-      ctx.fillText(
-        `Next round adds +${ROUND_SPAWN_INCREASE} grumpies and +1 sad meter`,
-        canvas.width / 2,
-        108
-      );
-    }
-  }
 
   if (state.gameMode === "paused") {
     ctx.fillStyle = "rgba(7, 16, 28, 0.72)";
