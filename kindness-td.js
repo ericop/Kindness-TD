@@ -56,6 +56,11 @@ function getInstructionPages(roundNumber) {
       {
         title: "Round 1",
         body: "This game is all about kindness and spreading love to people who have grumpy hearts, so they can go hang out in the Happy Hangout. Build towers to do this."
+      },
+      {
+        title: "Meet HappyHorn",
+        body: "HappyHorn the Unicorn is your hero. She flies circles around the nearest grumpy, painting a rainbow that cheers up every grumpy it touches. Only one at a time, so save up for her.",
+        towerIcon: "unicorn"
       }
     ];
   }
@@ -171,6 +176,10 @@ function resetTowerTargets() {
   affirmTowers.forEach(tower => {
     tower.target = null;
   });
+
+  unicorns.forEach(tower => {
+    tower.target = null;
+  });
 }
 
 function forEachTower(callback) {
@@ -178,6 +187,7 @@ function forEachTower(callback) {
   therapyDogs.forEach(tower => callback(tower, "dog"));
   affirmTowers.forEach(tower => callback(tower, "affirm"));
   radioTowers.forEach(tower => callback(tower, "radio"));
+  unicorns.forEach(tower => callback(tower, "unicorn"));
 }
 
 function createStandardRoundGrumpy(roundNumber, index, spawnDelay) {
@@ -204,6 +214,7 @@ function startRound(roundNumber) {
   state.waveTextTimer = 2.5;
   placementMenu.active = false;
   textBubbles.length = 0;
+  rainbowTrail.length = 0;
   resetTowerTargets();
 
   if (roundNumber === 5) {
@@ -282,14 +293,16 @@ const towerCosts = {
   hug: 30,
   dog: 80,
   affirm: 20,
-  radio: 50
+  radio: 50,
+  unicorn: 120
 };
 
 const buildMenuButtons = [
   { label: "Hugger", towerType: "hug", direction: "up" },
   { label: "TherapyDog", towerType: "dog", direction: "right" },
   { label: "AffirmingWords", towerType: "affirm", direction: "down" },
-  { label: "GladRadio", towerType: "radio", direction: "left" }
+  { label: "GladRadio", towerType: "radio", direction: "left" },
+  { label: "HappyHorn", towerType: "unicorn", direction: "upRight" }
 ];
 const TOWER_PIXEL_DIM = 10;
 
@@ -372,6 +385,41 @@ radio: [
   // feet
   { x: 2, y: 8, c: "#222222" }, { x: 7, y: 8, c: "#222222" }
 ],
+
+  // HappyHorn the Unicorn, side view facing right: golden horn, rainbow mane
+  // running down the neck, rainbow tail trailing off the back.
+  unicorn: [
+    // horn
+    { x: 7, y: 0, c: "#ffe98a" },
+    { x: 7, y: 1, c: "#ffc21f" },
+
+    // rainbow mane, sweeping from the horn down the neck
+    { x: 5, y: 1, c: "#ff5d73" }, { x: 6, y: 1, c: "#ff9f45" },
+    { x: 4, y: 2, c: "#ff5d73" }, { x: 5, y: 2, c: "#ffd93d" },
+    { x: 3, y: 3, c: "#ff9f45" }, { x: 4, y: 3, c: "#7ee081" },
+    { x: 2, y: 4, c: "#4dc3ff" }, { x: 3, y: 4, c: "#b98cff" },
+
+    // head, eye and snout
+    { x: 6, y: 2, c: "#fff6fb" }, { x: 7, y: 2, c: "#ffffff" }, { x: 8, y: 2, c: "#fff6fb" },
+    { x: 5, y: 3, c: "#ffffff" }, { x: 6, y: 3, c: "#ffffff" }, { x: 7, y: 3, c: "#3b2340" }, { x: 8, y: 3, c: "#ffc9de" },
+
+    // neck into body
+    { x: 4, y: 4, c: "#ffffff" }, { x: 5, y: 4, c: "#ffffff" }, { x: 6, y: 4, c: "#ffffff" }, { x: 7, y: 4, c: "#fff6fb" }, { x: 8, y: 4, c: "#ffc9de" },
+
+    // body
+    { x: 1, y: 5, c: "#fff6fb" }, { x: 2, y: 5, c: "#ffffff" }, { x: 3, y: 5, c: "#ffffff" }, { x: 4, y: 5, c: "#ffffff" }, { x: 5, y: 5, c: "#ffffff" }, { x: 6, y: 5, c: "#ffffff" }, { x: 7, y: 5, c: "#fff6fb" },
+    { x: 1, y: 6, c: "#fff6fb" }, { x: 2, y: 6, c: "#ffffff" }, { x: 3, y: 6, c: "#ffffff" }, { x: 4, y: 6, c: "#ffffff" }, { x: 5, y: 6, c: "#ffffff" }, { x: 6, y: 6, c: "#ffffff" }, { x: 7, y: 6, c: "#fff6fb" },
+
+    // rainbow tail
+    { x: 0, y: 4, c: "#ff5d73" }, { x: 0, y: 5, c: "#ffd93d" }, { x: 0, y: 6, c: "#7ee081" }, { x: 0, y: 7, c: "#4dc3ff" },
+
+    // legs
+    { x: 2, y: 7, c: "#ffffff" }, { x: 3, y: 7, c: "#fff6fb" }, { x: 5, y: 7, c: "#fff6fb" }, { x: 6, y: 7, c: "#ffffff" },
+    { x: 2, y: 8, c: "#ffffff" }, { x: 3, y: 8, c: "#fff6fb" }, { x: 5, y: 8, c: "#fff6fb" }, { x: 6, y: 8, c: "#ffffff" },
+
+    // hooves
+    { x: 2, y: 9, c: "#b98cff" }, { x: 3, y: 9, c: "#b98cff" }, { x: 5, y: 9, c: "#b98cff" }, { x: 6, y: 9, c: "#b98cff" }
+  ],
 };
 
 const menuGrumpies = [];
@@ -541,6 +589,8 @@ function startGame(advancedMode = false) {
   therapyDogs.length = 0;
   affirmTowers.length = 0;
   radioTowers.length = 0;
+  unicorns.length = 0;
+  rainbowTrail.length = 0;
   grid.blocked.clear();
   textBubbles.length = 0;
   beginRoundFlow(1);
@@ -646,6 +696,31 @@ const hugTowers=[];
 const therapyDogs=[];
 const affirmTowers=[];
 const radioTowers=[];
+const unicorns=[];
+
+// HappyHorn the Unicorn is a hero unit. Unlike the other towers she never
+// stands on her cell: she flies a loop around whichever grumpy she is helping
+// and paints a rainbow behind her, and that rainbow keeps cheering grumpies up
+// for a moment after she has passed.
+const UNICORN_ORBIT_RADIUS = 34;
+const UNICORN_ORBIT_SPEED = 2.6;      // radians per second
+const UNICORN_SEEK_RANGE = 150;       // how far from her cell she looks for a grumpy
+const UNICORN_FLY_SPEED = 170;        // px per second she closes on her orbit point
+const UNICORN_SAD_RELIEF = 22;        // sad meter per second from the rainbow
+const RAINBOW_TOUCH_RADIUS = 16;
+const RAINBOW_LIFE = 1.1;             // seconds a rainbow segment lingers
+const RAINBOW_DROP_INTERVAL = 0.03;   // seconds between segments
+const RAINBOW_COLORS = ["#ff5d73","#ff9f45","#ffd93d","#7ee081","#4dc3ff","#b98cff"];
+
+const rainbowTrail = [];
+
+// Only one HappyHorn may be on the field at a time, which is what makes her a
+// hero rather than another tower to spam.
+function canPlaceTower(towerType) {
+  if (state.careCredits < towerCosts[towerType]) return false;
+  if (towerType === "unicorn" && unicorns.length > 0) return false;
+  return true;
+}
 
 function markGrumpyHappy(grumpy) {
   if (grumpy.isHappy) return false;
@@ -801,6 +876,122 @@ function applyAffirmations(dt){
   });
 }
 
+function findNearestSadGrumpy(x, y, range) {
+  let nearest = null;
+  let nearestDistance = range;
+
+  for (const grumpy of state.grumpies) {
+    if (!grumpy.active || grumpy.isHappy || grumpy.reachedEnd) continue;
+
+    const distance = Math.hypot(grumpy.x - x, grumpy.y - y);
+    if (distance < nearestDistance) {
+      nearest = grumpy;
+      nearestDistance = distance;
+    }
+  }
+
+  return nearest;
+}
+
+function cheerUpWithRainbow(grumpy, dt) {
+  grumpy.sad -= UNICORN_SAD_RELIEF * dt;
+  if (grumpy.sad <= 0) markGrumpyHappy(grumpy);
+}
+
+function applyHappyHorn(dt) {
+  // Grumpies already helped this frame. A grumpy can be both the one HappyHorn
+  // is circling and standing on her rainbow, and should only benefit once.
+  const helped = new Set();
+
+  unicorns.forEach(u => {
+    if (u.isGrumpy) {
+      u.target = null;
+      return;
+    }
+
+    // Stay with the same grumpy until they cheer up or leave, so she does not
+    // flicker between two equally close targets.
+    if (u.target && (!u.target.active || u.target.isHappy || u.target.reachedEnd)) {
+      u.target = null;
+    }
+
+    if (!u.target) {
+      u.target = findNearestSadGrumpy(u.homeX, u.homeY, UNICORN_SEEK_RANGE);
+    }
+
+    // With nobody to help she circles her own cell, so she is never still.
+    const centerX = u.target ? u.target.x : u.homeX;
+    const centerY = u.target ? u.target.y : u.homeY;
+
+    u.angle += UNICORN_ORBIT_SPEED * dt;
+
+    // The circle is squashed vertically so it reads as a loop on the ground
+    // rather than a flat ring.
+    const orbitX = centerX + Math.cos(u.angle) * UNICORN_ORBIT_RADIUS;
+    const orbitY = centerY + Math.sin(u.angle) * UNICORN_ORBIT_RADIUS * 0.6;
+
+    // Fly toward the orbit point instead of snapping to it, so switching
+    // targets looks like a flight path.
+    const dx = orbitX - u.x;
+    const dy = orbitY - u.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance > 1) {
+      const step = Math.min(UNICORN_FLY_SPEED * dt, distance);
+      u.x += (dx / distance) * step;
+      u.y += (dy / distance) * step;
+    }
+
+    u.dropTimer -= dt;
+    if (u.dropTimer <= 0) {
+      u.dropTimer = RAINBOW_DROP_INTERVAL;
+      u.colorIndex = (u.colorIndex + 1) % RAINBOW_COLORS.length;
+      rainbowTrail.push({
+        x: u.x,
+        y: u.y,
+        c: RAINBOW_COLORS[u.colorIndex],
+        life: RAINBOW_LIFE
+      });
+    }
+
+    // The grumpy she is circling sits inside the loop, so the trail itself
+    // sweeps around them rather than over them. She tends to them directly
+    // instead of waiting for the rainbow to catch them by accident.
+    if (u.target && !helped.has(u.target)) {
+      helped.add(u.target);
+      cheerUpWithRainbow(u.target, dt);
+      if (u.target.isHappy) u.target = null;
+    }
+  });
+
+  updateRainbowTrail(dt, helped);
+}
+
+function updateRainbowTrail(dt, helped) {
+  for (let i = rainbowTrail.length - 1; i >= 0; i--) {
+    rainbowTrail[i].life -= dt;
+    if (rainbowTrail[i].life <= 0) rainbowTrail.splice(i, 1);
+  }
+
+  if (!rainbowTrail.length) return;
+
+  // Relief is applied once per grumpy per frame. Charging it per segment would
+  // make the rainbow's strength depend on how densely it happens to be drawn.
+  state.grumpies.forEach(grumpy => {
+    if (!grumpy.active || grumpy.isHappy || grumpy.reachedEnd) return;
+    if (helped.has(grumpy)) return;
+
+    const touching = rainbowTrail.some(
+      segment =>
+        Math.hypot(grumpy.x - segment.x, grumpy.y - segment.y) < RAINBOW_TOUCH_RADIUS
+    );
+
+    if (!touching) return;
+
+    cheerUpWithRainbow(grumpy, dt);
+  });
+}
+
 function applyNegativeNeil(dt) {
   state.grumpies.forEach(grumpy => {
     if (!grumpy.active || grumpy.isHappy || grumpy.name !== "Negative Neil") return;
@@ -883,6 +1074,11 @@ function getPlacementMenuButtons(cx, cy) {
     if (button.direction === "down") y = centerY + GRID_SIZE + 4;
     if (button.direction === "left") x = centerX - GRID_SIZE - width - 4;
     if (button.direction === "right") x = centerX + GRID_SIZE + 4;
+
+    if (button.direction === "upRight") {
+      x = centerX + GRID_SIZE + 4;
+      y = centerY - GRID_SIZE - height - 4;
+    }
 
     return {
       ...button,
@@ -1042,7 +1238,7 @@ if (state.gameMode === "menu") {
 
     const menuButton = getPlacementMenuButtonAt(x, y);
     if (menuButton) {
-      if (click && state.careCredits >= towerCosts[menuButton.towerType]) {
+      if (click && canPlaceTower(menuButton.towerType)) {
         selectedTower = menuButton.towerType;
         placeTower(placementMenu.cx, placementMenu.cy, menuButton.towerType);
         placementMenu.active = false;
@@ -1067,11 +1263,10 @@ if (state.gameMode === "menu") {
 }
 
 function placeTower(cx,cy,towerType=selectedTower){
-  const cost=towerCosts[towerType];
-  if(state.careCredits<cost) return;
+  if(!canPlaceTower(towerType)) return;
   if (doesCellOverlapRect(cx, cy, HAPPY_HANGOUT)) return;
 
-  state.careCredits-=cost;
+  state.careCredits-=towerCosts[towerType];
 
   const x=cx*GRID_SIZE+20;
   const y=cy*GRID_SIZE+20;
@@ -1087,6 +1282,15 @@ function placeTower(cx,cy,towerType=selectedTower){
   if(towerType==="dog") therapyDogs.push({...baseTower, speed:60, range:120, targets:[]});
   if(towerType==="affirm") affirmTowers.push({...baseTower, range:140, target:null, cooldown:0});
   if(towerType==="radio") radioTowers.push({...baseTower, radius:120});
+  if(towerType==="unicorn") unicorns.push({
+    ...baseTower,
+    homeX: x,
+    homeY: y,
+    angle: 0,
+    dropTimer: 0,
+    colorIndex: 0,
+    target: null
+  });
 
   grid.blocked.add(cellKey(cx,cy));
   refreshGrumpyPaths();
@@ -1110,13 +1314,17 @@ window.addEventListener('keydown', e=>{
   if (e.key==='2') selectedTower='dog';
   if (e.key==='3') selectedTower='affirm';
   if (e.key==='4') selectedTower='radio';
+  if (e.key==='5') selectedTower='unicorn';
 });
 
 // =========================
 // LOOP
 // =========================
 function loop(t){
-  const dt=(t-last)/1000;
+  // Clamp the step. A backgrounded tab throttles requestAnimationFrame, and an
+  // unclamped dt would teleport grumpies past towers the moment the game comes
+  // back into view (and the first frame's dt is the whole page lifetime).
+  const dt=Math.min((t-last)/1000,1/30);
   last=t;
 
   update(dt);
@@ -1142,6 +1350,7 @@ function update(dt){
   applyHugs(dt);
   applyTherapyDogs(dt);
   applyAffirmations(dt);
+  applyHappyHorn(dt);
   applyNegativeNeil(dt);
   updateTextBubbles(dt);
 
@@ -1201,6 +1410,20 @@ function drawTowerSpriteCentered(ctx, centerX, centerY, pixels, size, tOffset, a
   const topLeftX = centerX - (TOWER_PIXEL_DIM * size) / 2;
   const topLeftY = centerY - (TOWER_PIXEL_DIM * size) / 2;
   drawPixelArtWithBounce(ctx, topLeftX, topLeftY, pixels, size, tOffset, amp, speed);
+}
+
+function drawRainbowTrail(ctx) {
+  rainbowTrail.forEach(segment => {
+    const fade = segment.life / RAINBOW_LIFE;
+
+    ctx.globalAlpha = fade * 0.7;
+    ctx.fillStyle = segment.c;
+    ctx.beginPath();
+    ctx.arc(segment.x, segment.y, 3 + fade * 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.globalAlpha = 1;
 }
 
 function drawTowerGrumpiness(ctx, tower) {
@@ -1268,10 +1491,11 @@ function draw(){
     ctx.arc(645,72,22,0,Math.PI*2);
     ctx.fill();
 
-    drawTowerSpriteCentered(ctx, 135, 215, towerPixelArt.hug, 6, 0.2, 2, 0.004);
-    drawTowerSpriteCentered(ctx, 290, 212, towerPixelArt.dog, 6, 1.0, 2, 0.005);
-    drawTowerSpriteCentered(ctx, 470, 218, towerPixelArt.affirm, 6, 1.8, 2, 0.0045);
-    drawTowerSpriteCentered(ctx, 640, 214, towerPixelArt.radio, 6, 2.6, 2, 0.0055);
+    drawTowerSpriteCentered(ctx, 105, 215, towerPixelArt.hug, 6, 0.2, 2, 0.004);
+    drawTowerSpriteCentered(ctx, 245, 212, towerPixelArt.dog, 6, 1.0, 2, 0.005);
+    drawTowerSpriteCentered(ctx, 390, 218, towerPixelArt.affirm, 6, 1.8, 2, 0.0045);
+    drawTowerSpriteCentered(ctx, 535, 214, towerPixelArt.radio, 6, 2.6, 2, 0.0055);
+    drawTowerSpriteCentered(ctx, 678, 212, towerPixelArt.unicorn, 6, 3.4, 3, 0.007);
 
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.lineWidth = 18;
@@ -1424,6 +1648,21 @@ function draw(){
       26
     );
 
+    if (page.towerIcon) {
+      // Sits higher than the grumpy icons because a 10x10 tower sprite at this
+      // scale is taller and would otherwise run into the page counter.
+      drawTowerSpriteCentered(
+        ctx,
+        canvas.width / 2,
+        224,
+        towerPixelArt[page.towerIcon],
+        5,
+        0,
+        3,
+        0.008
+      );
+    }
+
     if (page.icon) {
       drawGrumpySprite(
         ctx,
@@ -1549,6 +1788,8 @@ function draw(){
   //   ctx.arc(t.x,t.y,12,0,Math.PI*2);
   //   ctx.fill();
   // });
+  drawRainbowTrail(ctx);
+
   hugTowers.forEach((t,i)=>{
     drawTowerSpriteCentered(ctx, t.x, t.y, towerPixelArt.hug, 4, i*0.5, 2, 0.006);
     if (t.isGrumpy) drawTowerGrumpiness(ctx, t);
@@ -1595,6 +1836,17 @@ function draw(){
 
     drawTowerSpriteCentered(ctx, t.x, t.y, towerPixelArt.radio, 4, i*0.4, 2.5, 0.005);
     if (t.isGrumpy) drawTowerGrumpiness(ctx, t);
+  });
+
+  unicorns.forEach((u,i)=>{
+    // Mark her home cell faintly so the player can still see the tile she
+    // occupies while she is off circling a grumpy.
+    ctx.strokeStyle = "rgba(185,140,255,0.35)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(u.homeX - 18, u.homeY - 18, 36, 36);
+
+    drawTowerSpriteCentered(ctx, u.x, u.y, towerPixelArt.unicorn, 4, i*0.6, 2.5, 0.009);
+    if (u.isGrumpy) drawTowerGrumpiness(ctx, u);
   });
 
   state.grumpies.forEach(g=>{
@@ -1666,7 +1918,7 @@ function draw(){
     );
 
     for (const button of buttons) {
-      const canAfford = state.careCredits >= towerCosts[button.towerType];
+      const canBuild = canPlaceTower(button.towerType);
 
       ctx.fillStyle = "#243b55";
       ctx.fillRect(button.x, button.y, button.w, button.h);
@@ -1675,7 +1927,7 @@ function draw(){
       ctx.lineWidth = 2;
       ctx.strokeRect(button.x, button.y, button.w, button.h);
 
-      ctx.fillStyle = canAfford ? "#ffffff" : "#8a8a8a";
+      ctx.fillStyle = canBuild ? "#ffffff" : "#8a8a8a";
       ctx.font = "12px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
