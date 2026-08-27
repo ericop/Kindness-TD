@@ -1,0 +1,37 @@
+name: js13k size budget
+
+on:
+  push:
+    branches:
+      - main
+      - js13kgames-2026
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install advzip
+        run: sudo apt-get update && sudo apt-get install -y advancecomp
+
+      - name: Build and check the 13KB budget
+        run: npm run build
+
+      - name: Upload submission package
+        uses: actions/upload-artifact@v4
+        with:
+          name: kindness-td-js13k
+          path: dist/kindness-td.zip
