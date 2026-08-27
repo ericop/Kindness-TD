@@ -345,8 +345,11 @@ const buddyPixelArt = {
     { x: 1, y: 3, c: "#f4c78a" }, { x: 2, y: 3, c: "#f4c78a" }, { x: 3, y: 3, c: "#111111" }, { x: 4, y: 3, c: "#f8ddb4" }, { x: 5, y: 3, c: "#f8ddb4" }, { x: 6, y: 3, c: "#111111" }, { x: 7, y: 3, c: "#f4c78a" }, { x: 8, y: 3, c: "#f4c78a" },
     { x: 2, y: 4, c: "#d99b58" }, { x: 3, y: 4, c: "#f6e4d4" }, { x: 4, y: 4, c: "#444444" }, { x: 5, y: 4, c: "#f6e4d4" }, { x: 6, y: 4, c: "#f6e4d4" }, { x: 7, y: 4, c: "#d99b58" },
     { x: 2, y: 5, c: "#d99b58" }, { x: 3, y: 5, c: "#d99b58" }, { x: 4, y: 5, c: "#c83c4a" }, { x: 5, y: 5, c: "#c83c4a" }, { x: 6, y: 5, c: "#d99b58" }, { x: 7, y: 5, c: "#d99b58" },
-    // red collar with a gold tag, sitting on the neck
-    { x: 3, y: 6, c: "#b02a2a" }, { x: 4, y: 6, c: "#ffce2e" }, { x: 5, y: 6, c: "#b02a2a" }, { x: 6, y: 6, c: "#b02a2a" },
+    // Lime collar with a gold tag, sitting on the neck. Red sat directly above
+    // the red tongue and the two blurred together. Lime is chosen dark enough
+    // (hue 89) that the single gold pixel still reads: 2.70 contrast against
+    // #ffe98a, where a brighter lime drops it to ~1.2 and the tag disappears.
+    { x: 3, y: 6, c: "#5f9e1a" }, { x: 4, y: 6, c: "#ffe98a" }, { x: 5, y: 6, c: "#5f9e1a" }, { x: 6, y: 6, c: "#5f9e1a" },
     { x: 2, y: 7, c: "#8f5a2a" }, { x: 3, y: 7, c: "#d99b58" }, { x: 4, y: 7, c: "#d99b58" }, { x: 5, y: 7, c: "#d99b58" }, { x: 6, y: 7, c: "#d99b58" }, { x: 7, y: 7, c: "#8f5a2a" },
     { x: 3, y: 8, c: "#8f5a2a" }, { x: 4, y: 8, c: "#d99b58" }, { x: 5, y: 8, c: "#d99b58" }, { x: 6, y: 8, c: "#8f5a2a" }, 
     { x: 3, y: 9, c: "#8f5a2a" }, { x: 4, y: 9, c: "#8f5a2a" }, { x: 5, y: 9, c: "#8f5a2a" }, { x: 6, y: 9, c: "#8f5a2a" }
