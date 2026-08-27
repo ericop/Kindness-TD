@@ -4,8 +4,7 @@
   "description": "Kindness TD - a non-violent tower defense game for js13kGames 2026 (theme: Unicorns and Rainbows)",
   "scripts": {
     "build": "node tools/build.mjs",
-    "serve": "node tools/build.mjs && node --run serve:dist",
-    "serve:dist": "npx --yes http-server dist -p 8013 -c-1"
+    "serve": "node tools/serve.mjs"
   },
   "repository": {
     "type": "git",

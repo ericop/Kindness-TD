@@ -15,6 +15,12 @@ const BUDGET = 13 * 1024;
 const DIST = "dist";
 const ZIP_NAME = "kindness-td.zip";
 
+// `--debug` applies the same compression but skips name mangling and writes
+// dist/debug.html instead of the package. That makes the compressed output
+// inspectable, so Terser's transforms can be tested against the same
+// behaviour checks as the readable source.
+const DEBUG = process.argv.includes("--debug");
+
 // Order matters: kindness-core.js defines canvas/ctx/grid/state that the game
 // file relies on at load time.
 const SOURCES = ["kindness-core.js", "kindness-td.js"];
@@ -32,19 +38,17 @@ async function buildJs() {
     // The concatenated sources are one script that only talks to the DOM, so
     // every top-level name is safe to mangle.
     toplevel: true,
+    // Deliberately no `unsafe*`, `booleans_as_integers` or `pure_getters`.
+    // Measured at only 67 bytes on this codebase, which is not worth transforms
+    // that can reorder float math or change truthiness in a game judged partly
+    // on running without errors.
     compress: {
       ecma: 2020,
       passes: 4,
-      unsafe: true,
-      unsafe_arrows: true,
-      unsafe_math: true,
-      unsafe_methods: true,
-      booleans_as_integers: true,
       drop_console: true,
-      pure_getters: true,
       hoist_funs: true
     },
-    mangle: { toplevel: true },
+    mangle: DEBUG ? false : { toplevel: true },
     format: { comments: false }
   });
 
@@ -132,7 +136,9 @@ function validateZip(path) {
 }
 
 async function main() {
-  rmSync(DIST, { recursive: true, force: true });
+  // The debug build writes alongside the package rather than replacing it, so
+  // both can be loaded and compared in the browser.
+  if (!DEBUG) rmSync(DIST, { recursive: true, force: true });
   mkdirSync(DIST, { recursive: true });
 
   const rawJs = SOURCES.reduce((n, f) => n + readFileSync(f).length, 0);
@@ -142,6 +148,16 @@ async function main() {
   assertNoExternalResources(html);
 
   const htmlBuf = Buffer.from(html, "utf8");
+
+  if (DEBUG) {
+    writeFileSync(`${DIST}/debug.html`, htmlBuf);
+    console.log("Kindness TD - debug build (compressed, not mangled)\n");
+    console.log(`  js source   ${kb(rawJs)}`);
+    console.log(`  js minified ${kb(Buffer.byteLength(js))}`);
+    console.log(`  dist/debug.html  ${kb(htmlBuf.length)}\n`);
+    return;
+  }
+
   writeFileSync(`${DIST}/index.html`, htmlBuf);
 
   const zipPath = `${DIST}/${ZIP_NAME}`;

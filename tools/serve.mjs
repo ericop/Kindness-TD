@@ -1,15 +1,20 @@
-// Tiny static server for eyeballing the built package the way a browser will
-// actually load it (file:// hides some issues). Serves dist/ on :8013.
+// Local dev/verify server. Serves the repo root on :8013 so both versions of
+// the game can be checked the way a browser actually loads them (file:// hides
+// some issues):
+//
+//   http://localhost:8013/                    the readable source
+//   http://localhost:8013/dist/index.html     the built single-file package
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, resolve } from "node:path";
 
-const ROOT = "dist";
+const ROOT = resolve(".");
 const PORT = 8013;
 const TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
+  ".png": "image/png",
   ".zip": "application/zip"
 };
 
@@ -34,4 +39,6 @@ createServer(async (req, res) => {
   }
 }).listen(PORT, () => {
   console.log(`Serving ${ROOT} on http://localhost:${PORT}`);
+  console.log(`  source: http://localhost:${PORT}/`);
+  console.log(`  built:  http://localhost:${PORT}/dist/index.html`);
 });
