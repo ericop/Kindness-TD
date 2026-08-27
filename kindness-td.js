@@ -708,7 +708,7 @@ const unicorns=[];
 // for a moment after she has passed.
 const UNICORN_ORBIT_RADIUS = 34;
 const UNICORN_ORBIT_SPEED = 2.6;      // radians per second
-const UNICORN_SEEK_RANGE = 150;       // how far from her cell she looks for a grumpy
+const UNICORN_SEEK_RANGE = 300;       // how far from her cell she looks for a grumpy
 const UNICORN_FLY_SPEED = 170;        // px per second she closes on her orbit point
 const UNICORN_SAD_RELIEF = 22;        // sad meter per second from the rainbow
 const RAINBOW_TOUCH_RADIUS = 16;
