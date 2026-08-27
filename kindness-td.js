@@ -1504,11 +1504,13 @@ function draw(){
     ctx.arc(645,72,22,0,Math.PI*2);
     ctx.fill();
 
+    // HappyHorn takes the centre spot as the theme hero; the megaphone moves
+    // out to the far right.
     drawTowerSpriteCentered(ctx, 105, 215, towerPixelArt.hug, 6, 0.2, 2, 0.004);
     drawTowerSpriteCentered(ctx, 245, 212, towerPixelArt.dog, 6, 1.0, 2, 0.005);
-    drawTowerSpriteCentered(ctx, 390, 218, towerPixelArt.affirm, 6, 1.8, 2, 0.0045);
+    drawTowerSpriteCentered(ctx, 390, 212, towerPixelArt.unicorn, 6, 3.4, 3, 0.007);
     drawTowerSpriteCentered(ctx, 535, 214, towerPixelArt.radio, 6, 2.6, 2, 0.0055);
-    drawTowerSpriteCentered(ctx, 678, 212, towerPixelArt.unicorn, 6, 3.4, 3, 0.007);
+    drawTowerSpriteCentered(ctx, 678, 218, towerPixelArt.affirm, 6, 1.8, 2, 0.0045);
 
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.lineWidth = 18;
