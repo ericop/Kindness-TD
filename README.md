@@ -4,10 +4,10 @@
 
 Kindness TD is a small browser-based tower defense game built with plain JavaScript and HTML canvas.
 
-Instead of defeating enemies with damage, the goal is to help grumpies feel better. Towers reduce a grumpy's sad meter, and happy grumpies head to the Happy Hangout.
+Instead of defeating enemies with damage, the goal is to help grumpies feel better. Your kindness crew reduces a grumpy's sad meter, and happy grumpies head to the Happy Hangout.
 
 
-> Game pitch: Kindness TD is a tower defense game about spreading love through a grumpy little town. You build kindness-powered towers, cheer up grumpies instead of defeating them, and guide them toward the Happy Hangout.
+> Game pitch: Kindness TD is a tower defense game about spreading love through a grumpy little town. You build a kindness crew, cheer up grumpies instead of defeating them, and guide them toward the Happy Hangout.
 
 ## Play Online
 
@@ -38,11 +38,14 @@ checklist.
 
 - Click `Start Game`.
 - Move the cursor to choose a grid cell.
-- Click once to open the tower build menu beside the preview.
-- Click a tower choice to place it.
+- Click once to open the build menu beside the preview.
+- Click a buddy to place them.
 - Stop too many sad grumpies from reaching the exit.
 
-## Tower Types
+## Your Kindness Crew
+
+The game calls the units you place **buddies**, and the group of them your
+**kindness crew**. It is still a tower defense game &ndash; they are just not towers.
 
 - `Hugger`: pulls in one grumpy and reduces sadness quickly.
 - `TherapyDog`: helps up to four grumpies at once and gently pulls them closer.

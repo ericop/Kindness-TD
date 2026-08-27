@@ -39,19 +39,24 @@ Lose:
 ### Grid + Pathfinding
 - Grid-based placement system
 - BFS pathfinding (not A*)
-- Towers block grid cells
+- Buddies block grid cells
 - Placement must NOT block all paths
 
 ### Currency
 - Called **Kindness**
 - Earned when grumpies become happy
-- Spent to place towers
+- Spent to place buddies
 
 ---
 
-## Towers
+## The Kindness Crew
 
-### Hug Tower
+Player-facing naming: one unit is a **buddy**, the group is your **kindness
+crew**. Never call them towers in player-facing copy. In code the identifiers
+match: `buddyCosts`, `placeBuddy`, `canPlaceBuddy`, `buddyPixelArt`, `hugBuddies`.
+"Tower defense" stays in the README as the genre description.
+
+### Hugger
 - Single target
 - Freezes target
 - High sadness reduction
@@ -61,12 +66,12 @@ Lose:
 - Can handle up to 4 targets
 - Medium sadness reduction
 
-### Affirmation Tower
+### Affirming Words
 - Single target
 - Sends text bubbles
 - Medium sadness reduction
 
-### Radio Tower
+### Glad Radio
 - AoE passive
 - Low sadness reduction
 
@@ -95,7 +100,7 @@ Each entity should behave like:
 ## Pathfinding Rules
 
 - Always ensure a valid path exists
-- Never allow tower placement that blocks all paths
+- Never allow buddy placement that blocks all paths
 - Use BFS (already implemented)
 - Recalculate paths only when necessary
 
@@ -129,7 +134,7 @@ Good:
 - "Added therapy dog targeting fix"
 
 Bad:
-- "Rewrote tower system"
+- "Rewrote buddy system"
 
 ---
 
@@ -251,7 +256,7 @@ Avoid:
 
 ## Optional Enhancements (Safe to Suggest)
 
-- UI buttons for tower selection
+- UI buttons for buddy selection
 - Path visualization
 - Grid snapping polish
 - Basic sound effects
