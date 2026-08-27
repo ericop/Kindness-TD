@@ -52,22 +52,17 @@ function getSpawnDelayForRound(roundNumber) {
 
 function getInstructionPages(roundNumber) {
   if (roundNumber === 1) {
-    // Advanced Mode's only difference is that every grumpy is created with
-    // double the sad meter (see hpMultiplier in createGrumpy), so all three
-    // wordings share the same explanation of what that costs the player.
-    const advancedLead = state.advancedMode
-      ? "You are playing Advanced Mode: every grumpy and boss"
-      : state.advancedUnlocked
-        ? "Advanced Mode is on the title screen, where every grumpy and boss"
-        : "Finish all 10 rounds to unlock Advanced Mode, where every grumpy and boss";
+    // Advanced Mode stays a surprise until it is earned, so the intro only
+    // mentions it to someone already playing it, where it explains why
+    // everything suddenly takes twice the kindness (hpMultiplier, createGrumpy).
+    const intro = "This game is all about kindness and spreading love to people who have grumpy hearts, so they can go hang out in the Happy Hangout. Build towers to do this.";
 
     return [
       {
         title: "Round 1",
-        body:
-          "This game is all about kindness and spreading love to people who have grumpy hearts, so they can go hang out in the Happy Hangout. Build towers to do this. " +
-          advancedLead +
-          " starts with twice the sadness, so each one needs twice as much kindness!"
+        body: state.advancedMode
+          ? intro + " You are playing Advanced Mode: every grumpy and boss starts with twice the sadness, so each one needs twice as much kindness!"
+          : intro
       },
       {
         title: "Meet HappyHorn",
