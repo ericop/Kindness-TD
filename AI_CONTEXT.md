@@ -25,6 +25,20 @@ Enemies:
 - Do NOT have HP
 - Have a **Sad Meter**
 
+Grumpy traits (mutually exclusive on normal grumpies, by design - the spawn
+rule uses distinct residues so they never stack):
+- **Headphones**: ignores Affirming Words and Glad Radio
+- **Dog allergy** (mask): Therapy Dogs skip them
+- **No hugs** (prickly thorns): Huggers skip them
+- **Stress Eater**: Advanced Mode only. Twice the sad meter of a normal grumpy
+  of the same round. Detours to **cookies** scattered around the field instead
+  of walking for the exit, pausing to nibble each one, and only heads for the
+  exit once every cookie is gone. Carries a cookie so he is identifiable, and
+  is drawn at 1.25 scale.
+
+Cookies exist only in Advanced Mode. They are placed off the spawn row so every
+one is a real detour, and buddies cannot be built on a cookie's cell.
+
 Goal:
 - Reduce Sad Meter to 0 using kindness
 - Happy grumpies go to the **Happy Hangout**
