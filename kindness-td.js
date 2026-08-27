@@ -97,11 +97,17 @@ function getInstructionPages(roundNumber) {
         body: "Advanced Mode brings the Stress Eater. Cookies are scattered around town and he heads straight for the nearest one instead of the exit, stopping to nibble. He has twice the sadness of a normal grumpy, so use the time he wastes snacking.",
         icon: { isStressEater: true }
       }] : []),
-      {
-        title: "Meet HappyHorn",
-        body: "HappyHorn the Unicorn is your hero. She flies circles around the nearest grumpy, painting a rainbow that cheers up every grumpy it touches. Only one at a time, so save up for her.",
-        buddyIcon: "unicorn"
-      }
+      state.advancedMode
+        ? {
+            title: "HappyHorn Is Proud of You",
+            body: "You finished all ten rounds, so HappyHorn is not making you save up this time. She is already waiting in the middle of town, for free, painting rainbows from the very first grumpy.",
+            buddyIcon: "unicorn"
+          }
+        : {
+            title: "Meet HappyHorn",
+            body: "HappyHorn the Unicorn is your hero. She flies circles around the nearest grumpy, painting a rainbow that cheers up every grumpy it touches. Only one at a time, so save up for her.",
+            buddyIcon: "unicorn"
+          }
     ];
   }
 
@@ -149,7 +155,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 10 Boss Fight",
-        body: "Negative Neil is the gloomiest grump in town. He lumbers in bigger than everyone else and slowly turns nearby buddies grumpy, so protect your kindness crew while you cheer him up.",
+        body: "Negative Neil is the gloomiest grump in town. He lumbers in bigger than everyone else and slowly turns nearby buddies grumpy. HappyHorn is the one he cannot sour, so let her circle him while you keep the rest of your kindness crew back.",
         icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1000 }
       }
     ];
@@ -685,6 +691,14 @@ function startGame(advancedMode = false) {
   cookies.length = 0;
   grid.blocked.clear();
   textBubbles.length = 0;
+
+  // Advanced doubles every grumpy's sad meter, but the player still starts on
+  // 100 Kindness while HappyHorn costs 120 - round 1 was close to unwinnable.
+  // She joins for free, in the middle of town.
+  if (advancedMode) {
+    placeBuddy(Math.floor(grid.cols / 2), Math.floor(grid.rows / 2), "unicorn", true);
+  }
+
   beginRoundFlow(1);
 }
 
@@ -1231,7 +1245,12 @@ function applyNegativeNeil(dt) {
   state.grumpies.forEach(grumpy => {
     if (!grumpy.active || grumpy.isHappy || grumpy.name !== "Negative Neil") return;
 
-    forEachBuddy(buddy => {
+    forEachBuddy((buddy, kind) => {
+      // HappyHorn is the one he cannot sour. Without this she is actively bad
+      // against him: she orbits her target at 34px, well inside his 90px
+      // aura, so she would fly in and be disabled within about five seconds.
+      if (kind === "unicorn") return;
+
       const distance = Math.hypot(grumpy.x - buddy.x, grumpy.y - buddy.y);
 
       if (distance < 90) {
@@ -1507,15 +1526,17 @@ if (state.gameMode === "menu") {
   }
 }
 
-function placeBuddy(cx,cy,buddyType=selectedBuddy){
-  if(!canPlaceBuddy(buddyType)) return;
+function placeBuddy(cx,cy,buddyType=selectedBuddy,free=false){
+  // `free` skips the cost only. The one-hero rule still applies, so the
+  // Advanced-Mode gift cannot be stacked with a bought HappyHorn.
+  if(free ? (buddyType === "unicorn" && unicorns.length > 0) : !canPlaceBuddy(buddyType)) return;
   if (doesCellOverlapRect(cx, cy, HAPPY_HANGOUT)) return;
   // Would hide the cookie and can wall it off from the Stress Eater. The
   // preview already refuses these cells; this is the same guard as the
   // Happy Hangout one above, so the rule holds however placeBuddy is reached.
   if (cookieAtCell(cx, cy)) return;
 
-  state.careCredits-=buddyCosts[buddyType];
+  if(!free) state.careCredits-=buddyCosts[buddyType];
 
   const x=cx*GRID_SIZE+20;
   const y=cy*GRID_SIZE+20;

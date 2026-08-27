@@ -94,6 +94,13 @@ match: `buddyCosts`, `placeBuddy`, `canPlaceBuddy`, `buddyPixelArt`, `hugBuddies
 - Auto-circles the nearest grumpy instead of standing still
 - Leaves a fading rainbow trail; the trail itself cheers up grumpies it touches
 - This is our hook into the 2026 "Unicorns and Rainbows" theme
+- Immune to Negative Neil. Without this she is actively bad against him: she
+  orbits at 34px, inside his 90px souring aura, so she would fly in and be
+  disabled in about five seconds
+- **Advanced Mode gives her for free**, pre-placed in the centre cell. Advanced
+  doubles every grumpy's sad meter while the player still starts on 100
+  Kindness and she costs 120, which made round 1 close to unwinnable. The
+  one-hero rule still applies, so she cannot be stacked with a bought one
 
 ---
 
