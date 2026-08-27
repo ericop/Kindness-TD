@@ -101,7 +101,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 4",
-        body: "Some grumpies do not like hugs. Their crossed-arms icon means Hugger towers will leave them alone, so use words, radio, or dogs to help them instead.",
+        body: "Some grumpies do not like hugs. Their prickly thorns mean Hugger towers will leave them alone, so use words, radio, or dogs to help them instead.",
         icon: { hasHeadphones: false, hasDogAllergy: false, avoidsHugs: true }
       }
     ];
@@ -550,22 +550,26 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
   }
 
   if (grumpy.avoidsHugs) {
-    ctx.strokeStyle = '#c84d7a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(grumpy.x - 9, grumpy.y + 1);
-    ctx.lineTo(grumpy.x - 5, grumpy.y + 5);
-    ctx.lineTo(grumpy.x + 2, grumpy.y + 8);
-    ctx.moveTo(grumpy.x + 9, grumpy.y + 1);
-    ctx.lineTo(grumpy.x + 5, grumpy.y + 5);
-    ctx.lineTo(grumpy.x - 2, grumpy.y + 8);
-    ctx.stroke();
+    // Prickly. The thorns change the silhouette rather than adding detail
+    // inside it, so a no-hug grumpy can be picked out of a moving queue
+    // without looking straight at them. Thorn tips stop at 13.5, which keeps
+    // them clear of the sad meter at y-15.
+    ctx.fillStyle = '#5f7180';
+    const thornCount = 10;
+    const thornHalfWidth = 0.17;
 
-    ctx.fillStyle = '#f0c2ad';
-    ctx.fillRect(grumpy.x - 10, grumpy.y, 2, 2);
-    ctx.fillRect(grumpy.x + 8, grumpy.y, 2, 2);
-    ctx.fillRect(grumpy.x + 1, grumpy.y + 7, 2, 2);
-    ctx.fillRect(grumpy.x - 3, grumpy.y + 7, 2, 2);
+    for (let i = 0; i < thornCount; i++) {
+      const angle = (i / thornCount) * Math.PI * 2 - Math.PI / 2;
+      const a0 = angle - thornHalfWidth;
+      const a1 = angle + thornHalfWidth;
+
+      ctx.beginPath();
+      ctx.moveTo(grumpy.x + Math.cos(a0) * 9 * scale, grumpy.y + Math.sin(a0) * 9 * scale);
+      ctx.lineTo(grumpy.x + Math.cos(angle) * 13.5 * scale, grumpy.y + Math.sin(angle) * 13.5 * scale);
+      ctx.lineTo(grumpy.x + Math.cos(a1) * 9 * scale, grumpy.y + Math.sin(a1) * 9 * scale);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   if(grumpy.isHugged){
