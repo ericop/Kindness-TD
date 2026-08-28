@@ -20,6 +20,20 @@ const NO_HUG_GRUMPY_OFFSET = 4;
 // free, so a Stress Eater never doubles up with headphones, a mask or thorns.
 const STRESS_EATER_INTERVAL = 12;
 const STRESS_EATER_OFFSET = 7;
+// Rounds 1-3 keep their original gentle curve; the steep part starts after,
+// which is where the game had been going slack. Per-grumpy toughness used to
+// grow by only +1 a round - 100 to 109 across all ten rounds, +9% - while the
+// player banked ~4,660 Kindness by round 8 and buddies persist between rounds,
+// so the crew compounded and the grumpies did not. At 20, difficulty growth
+// from round 3 to round 9 is 4.2x where it used to be 2.0x.
+const EASY_ROUNDS = 3;
+const ROUND_SAD_INCREASE = 20;
+
+function getRoundSadBonus(roundNumber) {
+  return Math.max(0, roundNumber - 1)
+       + Math.max(0, roundNumber - EASY_ROUNDS) * ROUND_SAD_INCREASE;
+}
+
 const BASE_SPAWN_DELAY = 0.6;
 const ROUND_SPAWN_SPEEDUP = 0.9;
 const instructionButton = {
@@ -67,12 +81,13 @@ function getSpawnDelayForRound(roundNumber) {
 // it never set a fill colour, drew in whatever shade the previous draw call
 // left behind.
 function getRoundIntroPage(roundNumber) {
-  const hpBonus = Math.max(0, roundNumber - 1);
+  const hpBonus = getRoundSadBonus(roundNumber);
   const count = getRoundGrumpyCount(roundNumber);
 
   let body = `${count} grumpies are heading in. This round beefs them up by +${hpBonus} sad meter.`;
   if (roundNumber < state.totalRounds) {
-    body += ` Next round adds +${ROUND_SPAWN_INCREASE} grumpies and +1 sad meter.`;
+    const nextJump = getRoundSadBonus(roundNumber + 1) - hpBonus;
+    body += ` Next round adds +${ROUND_SPAWN_INCREASE} grumpies and +${nextJump} sad meter.`;
   }
 
   return { title: `Round ${roundNumber} Incoming`, body };
@@ -155,7 +170,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 10 Boss Fight",
-        body: "Negative Neil is the gloomiest grump in town. He lumbers in bigger than everyone else and slowly turns nearby buddies grumpy. HappyHorn is the one he cannot sour, so let her circle him while you keep the rest of your kindness crew back.",
+        body: "Negative Neil is the gloomiest grump in town. Anything he brushes past goes grumpy in half a second, so keep your kindness crew off his route. HappyHorn is the one he cannot sour - let her circle him.",
         icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1000 }
       }
     ];
@@ -717,7 +732,7 @@ function createGrumpy(delay=0, options = {}){
   const hpMultiplier = state.advancedMode ? 2 : 1;
   // Double a normal grumpy of the same round, on top of the Advanced doubling.
   const stressEaterMultiplier = isStressEater ? 2 : 1;
-  const roundHpBonus = Math.max(0, state.currentRound - 1);
+  const roundHpBonus = getRoundSadBonus(state.currentRound);
   const baseSad = isBoss ? (options.bossHp || 1000) : 100;
   const maxSad = (baseSad + roundHpBonus) * hpMultiplier * stressEaterMultiplier;
   return {
@@ -1246,6 +1261,14 @@ function updateRainbowTrail(dt, helped) {
   });
 }
 
+// He used to sour anything within 90px, taking a full 5 seconds about it, which
+// meant he mostly drifted past doing nothing. Now it is contact range and half
+// a second, so walking him into your crew wrecks it - and placement off his
+// route is the counter-play.
+const NEIL_TOUCH_RANGE = 34;      // his radius plus a buddy's: actual contact
+const NEIL_DISABLE_TIME = 0.5;    // seconds of contact to sour a buddy
+const NEIL_RECOVER_TIME = 2;      // seconds to shake it off once he has moved on
+
 function applyNegativeNeil(dt) {
   state.grumpies.forEach(grumpy => {
     if (!grumpy.active || grumpy.isHappy || grumpy.name !== "Negative Neil") return;
@@ -1258,10 +1281,10 @@ function applyNegativeNeil(dt) {
 
       const distance = Math.hypot(grumpy.x - buddy.x, grumpy.y - buddy.y);
 
-      if (distance < 90) {
-        buddy.grumpiness = Math.min(1, (buddy.grumpiness || 0) + dt * 0.2);
+      if (distance < NEIL_TOUCH_RANGE) {
+        buddy.grumpiness = Math.min(1, (buddy.grumpiness || 0) + dt / NEIL_DISABLE_TIME);
       } else if (!buddy.isGrumpy) {
-        buddy.grumpiness = Math.max(0, (buddy.grumpiness || 0) - dt * 0.06);
+        buddy.grumpiness = Math.max(0, (buddy.grumpiness || 0) - dt / NEIL_RECOVER_TIME);
       }
 
       buddy.isGrumpy = (buddy.grumpiness || 0) >= 1;
