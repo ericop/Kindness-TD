@@ -555,42 +555,45 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
     ctx.fillRect(grumpy.x-10 * scale,grumpy.y-18 * scale,20 * scale*(1-grumpy.sad/grumpy.maxSad),3 * scale);
   }
 
+  // Every offset here is scaled. Unscaled, the band sat at radius 11 against
+  // Headphone Hank's radius-15 head - 4px inside his skull, with the earcups
+  // not even reaching his edge, which is why they looked clamped on.
   if (grumpy.hasHeadphones) {
     ctx.strokeStyle = 'rgba(190, 120, 255, 0.65)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 4 * scale;
     ctx.beginPath();
-    ctx.arc(grumpy.x, grumpy.y - 4, 11, Math.PI, 2 * Math.PI);
+    ctx.arc(grumpy.x, grumpy.y - 4 * scale, 11 * scale, Math.PI, 2 * Math.PI);
     ctx.stroke();
 
     ctx.strokeStyle = '#5c2d91';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * scale;
     ctx.beginPath();
-    ctx.arc(grumpy.x, grumpy.y - 4, 8, Math.PI, 2 * Math.PI);
+    ctx.arc(grumpy.x, grumpy.y - 4 * scale, 8 * scale, Math.PI, 2 * Math.PI);
     ctx.stroke();
 
     ctx.fillStyle = '#8750c7';
-    ctx.fillRect(grumpy.x - 14, grumpy.y - 2, 6, 8);
-    ctx.fillRect(grumpy.x + 8, grumpy.y - 2, 6, 8);
+    ctx.fillRect(grumpy.x - 14 * scale, grumpy.y - 2 * scale, 6 * scale, 8 * scale);
+    ctx.fillRect(grumpy.x + 8 * scale, grumpy.y - 2 * scale, 6 * scale, 8 * scale);
 
     ctx.fillStyle = '#b28ae6';
-    ctx.fillRect(grumpy.x - 13, grumpy.y, 2, 4);
-    ctx.fillRect(grumpy.x + 11, grumpy.y, 2, 4);
+    ctx.fillRect(grumpy.x - 13 * scale, grumpy.y, 2 * scale, 4 * scale);
+    ctx.fillRect(grumpy.x + 11 * scale, grumpy.y, 2 * scale, 4 * scale);
   }
 
   if (grumpy.hasDogAllergy) {
     ctx.fillStyle = '#f5f7fa';
-    ctx.fillRect(grumpy.x - 6, grumpy.y + 1, 12, 5);
+    ctx.fillRect(grumpy.x - 6 * scale, grumpy.y + 1 * scale, 12 * scale, 5 * scale);
 
     ctx.fillStyle = '#d9dee5';
-    ctx.fillRect(grumpy.x - 4, grumpy.y + 2, 8, 1);
+    ctx.fillRect(grumpy.x - 4 * scale, grumpy.y + 2 * scale, 8 * scale, 1 * scale);
 
     ctx.strokeStyle = '#b8c2cc';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 * scale;
     ctx.beginPath();
-    ctx.moveTo(grumpy.x - 6, grumpy.y + 2);
-    ctx.lineTo(grumpy.x - 10, grumpy.y + 1);
-    ctx.moveTo(grumpy.x + 6, grumpy.y + 2);
-    ctx.lineTo(grumpy.x + 10, grumpy.y + 1);
+    ctx.moveTo(grumpy.x - 6 * scale, grumpy.y + 2 * scale);
+    ctx.lineTo(grumpy.x - 10 * scale, grumpy.y + 1 * scale);
+    ctx.moveTo(grumpy.x + 6 * scale, grumpy.y + 2 * scale);
+    ctx.lineTo(grumpy.x + 10 * scale, grumpy.y + 1 * scale);
     ctx.stroke();
   }
 
