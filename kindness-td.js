@@ -894,13 +894,17 @@ function retargetStressEater(grumpy) {
   }
 }
 
-// Three chips, each a different size, on a tan disc with a darker crescent
-// along the bottom for shading. Four evenly sized chips in a ring on a flat
-// disc read as a shirt button; varied sizes and an odd count break that.
+// Five chips at four sizes, on a tan disc with a darker crescent along the
+// bottom for shading. Even sizes ringed evenly read as a shirt button, so the
+// sizes vary and the two tiny ones sit out at opposite corners. Positions are
+// checked so no pair overlaps, none shares a row or column, and every chip
+// stays clear of the shading. [x, y, radius], all as fractions of the cookie.
 const COOKIE_CHIPS = [
   [-0.30, -0.22, 0.26],
   [ 0.28,  0.04, 0.19],
-  [-0.08,  0.30, 0.14]
+  [-0.08,  0.30, 0.14],
+  [ 0.34, -0.42, 0.10],
+  [-0.46,  0.24, 0.10]
 ];
 
 function drawCookie(ctx, x, y, r) {
