@@ -50,13 +50,19 @@ const pauseButton = {
 };
 const pauseContinueButton = {
   x: canvas.width / 2 - 110,
-  y: 196,
+  y: 180,
   w: 220,
   h: 42
 };
 const pauseMenuButton = {
   x: canvas.width / 2 - 110,
-  y: 248,
+  y: 230,
+  w: 220,
+  h: 42
+};
+const pauseMusicButton = {
+  x: canvas.width / 2 - 110,
+  y: 280,
   w: 220,
   h: 42
 };
@@ -503,14 +509,33 @@ const menuGrumpies = [];
 function ensureMenuGrumpies() {
   if (menuGrumpies.length) return;
 
-  menuGrumpies.push(
-    { x: 160, y: 250, vx: 18, vy: 7, hasHeadphones: false, hasDogAllergy: false },
-    { x: 240, y: 295, vx: 14, vy: -6, hasHeadphones: true, hasDogAllergy: false },
-    { x: 375, y: 260, vx: -16, vy: 5, hasHeadphones: false, hasDogAllergy: true, avoidsHugs: false },
-    { x: 520, y: 300, vx: 15, vy: -5, hasHeadphones: true, hasDogAllergy: false, avoidsHugs: false },
-    { x: 455, y: 315, vx: 13, vy: 4, hasHeadphones: false, hasDogAllergy: false, avoidsHugs: true },
-    { x: 610, y: 248, vx: -17, vy: 6, hasHeadphones: false, hasDogAllergy: false }
-  );
+  // Everyone on the title screen has already been cheered up - it is the
+  // Happy Hangout, not a wave. isHappy makes drawGrumpySprite use the gold
+  // body and the smile instead of the frown.
+  const drifters = [
+    [160, 250,  18,  7, 0, 0, 0],
+    [240, 295,  14, -6, 1, 0, 0],
+    [375, 260, -16,  5, 0, 1, 0],
+    [520, 300,  15, -5, 1, 0, 0],
+    [455, 315,  13,  4, 0, 0, 1],
+    [610, 248, -17,  6, 0, 0, 0],
+    [120, 305,  16, -5, 0, 0, 1],
+    [300, 232, -14,  6, 0, 0, 0],
+    [420, 288,  17,  5, 0, 0, 0],
+    [560, 244, -15, -6, 0, 1, 0],
+    [660, 300,  13,  6, 1, 0, 0],
+    [200, 268, -18, -4, 0, 0, 0]
+  ];
+
+  for (const [x, y, vx, vy, phones, allergy, nohugs] of drifters) {
+    menuGrumpies.push({
+      x, y, vx, vy,
+      isHappy: true,
+      hasHeadphones: !!phones,
+      hasDogAllergy: !!allergy,
+      avoidsHugs: !!nohugs
+    });
+  }
 }
 
 function updateMenuGrumpies(dt) {
@@ -839,6 +864,104 @@ function createGrumpy(delay=0, options = {}){
       drawGrumpySprite(ctx, this, true);
     }
   };
+}
+
+// =========================
+// MUSIC
+// Square lead over a triangle bass. Notes are scheduled ahead onto the
+// WebAudio clock rather than fired from a timer, so the beat does not wobble
+// when the main thread is busy. Each character is a hex semitone offset from
+// A3; "." is a rest.
+// =========================
+const MUSIC_ROOT = 220;
+const MUSIC_LOOKAHEAD = 0.25;   // seconds of notes queued in advance
+const MUSIC_VOLUME = 0.4;
+
+// Sunny Skip, while a wave is running.
+const ROUND_TUNE = {
+  t: 0.125,
+  m: "047c7404259e9525047c7404b9754020",
+  b: "0...0...5...5...0...0...7...7..."
+};
+
+// Kindness March, on the title screen.
+const TITLE_TUNE = {
+  t: 0.15,
+  m: "c.b.9.7.9...7...5.7.9.b.c.......",
+  b: "0.0.5.5.2.2.7.7.0.0.5.5.7.7.0.0."
+};
+
+let audioCtx = null;
+let musicGain;
+let musicTune = null;
+let musicStep = 0;
+let musicNext = 0;
+let musicOn = true;
+
+// Namespaced key: js13k games share one origin, so the rules require a prefix.
+// Private browsing throws on access, hence the try.
+try { musicOn = localStorage.getItem("ktd:music") !== "0"; } catch (e) {}
+
+function musicVoice(semi, type, volume, length, at) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = MUSIC_ROOT * Math.pow(2, semi / 12);
+  gain.gain.setValueAtTime(volume, at);
+  gain.gain.exponentialRampToValueAtTime(0.001, at + length);
+  osc.connect(gain);
+  gain.connect(musicGain);
+  osc.start(at);
+  osc.stop(at + length);
+}
+
+// Browsers refuse to start audio outside a user gesture, so this is only ever
+// called from the pointer handler.
+function startAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = musicOn ? MUSIC_VOLUME : 0;
+    musicGain.connect(audioCtx.destination);
+    musicNext = audioCtx.currentTime;
+  }
+  if (audioCtx.state !== "running") audioCtx.resume();
+}
+
+function setMusicOn(on) {
+  musicOn = on;
+  if (musicGain) musicGain.gain.value = on ? MUSIC_VOLUME : 0;
+  try { localStorage.setItem("ktd:music", on ? "1" : "0"); } catch (e) {}
+}
+
+// Title tune on the menu, round tune while a wave runs, silence everywhere
+// else - so the music stops for the round popup and starts the next wave from
+// the top of the loop rather than resuming mid-phrase.
+function updateMusic() {
+  const wanted =
+    state.gameMode === "menu" ? TITLE_TUNE :
+    state.gameMode === "playing" ? ROUND_TUNE : null;
+
+  if (wanted !== musicTune) {
+    musicTune = wanted;
+    musicStep = 0;
+    if (audioCtx) musicNext = audioCtx.currentTime + 0.08;
+  }
+
+  if (!musicTune || !audioCtx || audioCtx.state !== "running") return;
+
+  while (musicNext < audioCtx.currentTime + MUSIC_LOOKAHEAD) {
+    const lead = musicTune.m[musicStep % musicTune.m.length];
+    if (lead !== ".") {
+      musicVoice(parseInt(lead, 16) + 12, "square", 0.11, musicTune.t * 1.7, musicNext);
+    }
+    const bass = musicTune.b[musicStep % musicTune.b.length];
+    if (bass !== ".") {
+      musicVoice(parseInt(bass, 16) - 12, "triangle", 0.17, musicTune.t * 2.2, musicNext);
+    }
+    musicStep++;
+    musicNext += musicTune.t;
+  }
 }
 
 // =========================
@@ -1505,6 +1628,11 @@ if (state.gameMode === "menu") {
 
     if (click && pointInRect(x, y, pauseMenuButton)) {
       returnToMainMenu();
+      return;
+    }
+
+    if (click && pointInRect(x, y, pauseMusicButton)) {
+      setMusicOn(!musicOn);
     }
     return;
   }
@@ -1603,6 +1731,7 @@ canvas.addEventListener("pointermove", e => {
 
 canvas.addEventListener("pointerdown", e => {
   e.preventDefault();
+  startAudio();
   const point = getCanvasPoint(e.clientX, e.clientY);
   handleInput(point.x, point.y, true);
 });
@@ -1632,6 +1761,8 @@ function loop(t){
 }
 
 function update(dt){
+  updateMusic();
+
   if(state.gameMode==="menu"){
     updateMenuGrumpies(dt);
     return;
@@ -2271,20 +2402,20 @@ function draw(){
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "#15263f";
-    ctx.fillRect(canvas.width / 2 - 150, 118, 300, 196);
+    ctx.fillRect(canvas.width / 2 - 150, 100, 300, 250);
     ctx.strokeStyle = "#f0f6ff";
     ctx.lineWidth = 2;
-    ctx.strokeRect(canvas.width / 2 - 150, 118, 300, 196);
+    ctx.strokeRect(canvas.width / 2 - 150, 100, 300, 250);
 
     ctx.fillStyle = "white";
     ctx.font = "bold 28px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText("Paused", canvas.width / 2, 138);
+    ctx.fillText("Paused", canvas.width / 2, 120);
 
     ctx.font = "15px sans-serif";
     ctx.fillStyle = "#d9e7ff";
-    ctx.fillText(`Round ${state.pausedFromRound} is waiting for you`, canvas.width / 2, 172);
+    ctx.fillText(`Round ${state.pausedFromRound} is waiting for you`, canvas.width / 2, 154);
 
     ctx.fillStyle = "#2e8b57";
     ctx.fillRect(
@@ -2328,6 +2459,27 @@ function draw(){
       "Return To Main Screen",
       pauseMenuButton.x + pauseMenuButton.w / 2,
       pauseMenuButton.y + pauseMenuButton.h / 2
+    );
+
+    ctx.fillStyle = musicOn ? "#2f6a4a" : "#4a3350";
+    ctx.fillRect(
+      pauseMusicButton.x,
+      pauseMusicButton.y,
+      pauseMusicButton.w,
+      pauseMusicButton.h
+    );
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(
+      pauseMusicButton.x,
+      pauseMusicButton.y,
+      pauseMusicButton.w,
+      pauseMusicButton.h
+    );
+    ctx.fillStyle = "white";
+    ctx.fillText(
+      musicOn ? "Music: On" : "Music: Off",
+      pauseMusicButton.x + pauseMusicButton.w / 2,
+      pauseMusicButton.y + pauseMusicButton.h / 2
     );
   }
 }

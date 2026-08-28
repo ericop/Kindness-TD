@@ -206,6 +206,24 @@ if the package goes over budget. Full checklist in `JS13K-2026.md`.
 
 ---
 
+## Music
+
+Square-wave lead over a triangle bass, scheduled ahead onto the WebAudio clock
+from `update()` rather than a timer, so the beat does not wobble. Notes are hex
+semitone offsets from A3 in a 32-character string; `.` is a rest.
+
+- **Title screen**: Kindness March (`TITLE_TUNE`)
+- **While a wave runs**: Sunny Skip (`ROUND_TUNE`)
+- **Round popup, paused, game over**: silence
+
+Each round starts its loop from step 0 rather than resuming mid-phrase, so the
+music lines up with the wave.
+
+Audio can only start inside a user gesture, so `startAudio()` is called from the
+`pointerdown` handler and nowhere else. The on/off toggle lives on the pause
+screen and saves to `localStorage` under `ktd:music` - namespaced because js13k
+games share one origin - wrapped in try/catch since private browsing throws.
+
 ## Performance Rules
 
 - Avoid unnecessary recalculations
