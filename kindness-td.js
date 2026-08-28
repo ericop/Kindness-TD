@@ -1828,6 +1828,12 @@ canvas.addEventListener("pointermove", e => {
   }
 });
 
+// Any interaction anywhere unlocks audio, not just a tap on the playfield - the
+// Full Screen button and the number-key shortcuts count too. startAudio() is
+// idempotent, so re-firing costs nothing.
+addEventListener("pointerdown", startAudio, { passive: true });
+addEventListener("keydown", startAudio, { passive: true });
+
 canvas.addEventListener("pointerdown", e => {
   e.preventDefault();
   startAudio();
