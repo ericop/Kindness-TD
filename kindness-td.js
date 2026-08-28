@@ -171,7 +171,7 @@ function getInstructionPages(roundNumber) {
       {
         title: "Round 10 Boss Fight",
         body: "Negative Neil is the gloomiest grump in town. Anything he brushes past goes grumpy in half a second, so keep your kindness crew off his route. HappyHorn is the one he cannot sour - let her circle him.",
-        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1000 }
+        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1500 }
       }
     ];
   }
@@ -311,7 +311,7 @@ function startRound(roundNumber) {
     const boss = createGrumpy(0, {
       isBoss: true,
       bossName: "Negative Neil",
-      bossHp: 1000
+      bossHp: 1500
     });
     boss.path = findPath(START, END) || [];
     state.grumpies.push(boss);
@@ -2020,18 +2020,43 @@ function draw(){
   }
 
   if(state.gameMode==="gameover"){
+    // Beating Advanced is the end of the whole game, so it gets its own layout
+    // with room for the verse rather than the one-line sign-off.
+    const advancedWin = state.win && state.advancedMode;
+
     ctx.fillStyle="black";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     ctx.fillStyle="white";
     ctx.font="32px sans-serif";
     ctx.textAlign="center";
+    ctx.textBaseline="alphabetic";
     ctx.fillText(
       state.win?"You spread kindness!":"You have lost!",
-      canvas.width/2,162
+      canvas.width/2, advancedWin ? 84 : 162
     );
 
-    if (state.win) {
+    if (advancedWin) {
+      ctx.font = "19px sans-serif";
+      ctx.fillStyle = "#ffd7e8";
+      wrapText(
+        ctx,
+        "Wow, You Did Great! Now go out and show kindness in real life!",
+        canvas.width / 2, 130, 560, 25
+      );
+
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#e7eefc";
+      wrapText(
+        ctx,
+        "\u201cBe kind and compassionate to one another, forgiving each other, just as in Christ God forgave you.\u201d",
+        canvas.width / 2, 200, 560, 23
+      );
+
+      ctx.font = "14px sans-serif";
+      ctx.fillStyle = "#a9b8d4";
+      ctx.fillText("Ephesians 4:32", canvas.width / 2, 268);
+    } else if (state.win) {
       ctx.font = "18px sans-serif";
       ctx.fillStyle = "#ffd7e8";
       wrapText(
@@ -2048,7 +2073,7 @@ function draw(){
 
     ctx.fillStyle = "white";
     ctx.font="20px sans-serif";
-    ctx.fillText("Tap to return to menu",canvas.width/2,290);
+    ctx.fillText("Tap to return to menu", canvas.width/2, advancedWin ? 322 : 290);
     return;
   }
 
