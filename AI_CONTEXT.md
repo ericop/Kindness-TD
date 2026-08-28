@@ -25,6 +25,20 @@ Enemies:
 - Do NOT have HP
 - Have a **Sad Meter**
 
+Grumpy traits (mutually exclusive on normal grumpies, by design - the spawn
+rule uses distinct residues so they never stack):
+- **Headphones**: ignores Affirming Words and Glad Radio
+- **Dog allergy** (mask): Therapy Dogs skip them
+- **No hugs** (prickly thorns): Huggers skip them
+- **Stress Eater**: Advanced Mode only. Twice the sad meter of a normal grumpy
+  of the same round. Detours to **cookies** scattered around the field instead
+  of walking for the exit, pausing to nibble each one, and only heads for the
+  exit once every cookie is gone. Carries a cookie so he is identifiable, and
+  is drawn at 1.25 scale.
+
+Cookies exist only in Advanced Mode. They are placed off the spawn row so every
+one is a real detour, and buddies cannot be built on a cookie's cell.
+
 Goal:
 - Reduce Sad Meter to 0 using kindness
 - Happy grumpies go to the **Happy Hangout**
@@ -39,19 +53,24 @@ Lose:
 ### Grid + Pathfinding
 - Grid-based placement system
 - BFS pathfinding (not A*)
-- Towers block grid cells
+- Buddies block grid cells
 - Placement must NOT block all paths
 
 ### Currency
 - Called **Kindness**
 - Earned when grumpies become happy
-- Spent to place towers
+- Spent to place buddies
 
 ---
 
-## Towers
+## The Kindness Crew
 
-### Hug Tower
+Player-facing naming: one unit is a **buddy**, the group is your **kindness
+crew**. Never call them towers in player-facing copy. In code the identifiers
+match: `buddyCosts`, `placeBuddy`, `canPlaceBuddy`, `buddyPixelArt`, `hugBuddies`.
+"Tower defense" stays in the README as the genre description.
+
+### Hugger
 - Single target
 - Freezes target
 - High sadness reduction
@@ -61,14 +80,27 @@ Lose:
 - Can handle up to 4 targets
 - Medium sadness reduction
 
-### Affirmation Tower
+### Affirming Words
 - Single target
 - Sends text bubbles
 - Medium sadness reduction
 
-### Radio Tower
+### Glad Radio
 - AoE passive
 - Low sadness reduction
+
+### HappyHorn the Unicorn (hero)
+- Hero unit, limited to one on the field
+- Auto-circles the nearest grumpy instead of standing still
+- Leaves a fading rainbow trail; the trail itself cheers up grumpies it touches
+- This is our hook into the 2026 "Unicorns and Rainbows" theme
+- Immune to Negative Neil. Without this she is actively bad against him: she
+  orbits at 34px, inside his 90px souring aura, so she would fly in and be
+  disabled in about five seconds
+- **Advanced Mode gives her for free**, pre-placed in the centre cell. Advanced
+  doubles every grumpy's sad meter while the player still starts on 100
+  Kindness and she costs 120, which made round 1 close to unwinnable. The
+  one-hero rule still applies, so she cannot be stacked with a bought one
 
 ---
 
@@ -89,7 +121,7 @@ Each entity should behave like:
 ## Pathfinding Rules
 
 - Always ensure a valid path exists
-- Never allow tower placement that blocks all paths
+- Never allow buddy placement that blocks all paths
 - Use BFS (already implemented)
 - Recalculate paths only when necessary
 
@@ -123,7 +155,7 @@ Good:
 - "Added therapy dog targeting fix"
 
 Bad:
-- "Rewrote tower system"
+- "Rewrote buddy system"
 
 ---
 
@@ -154,13 +186,52 @@ If unsure:
 
 ## JS13K Constraints (IMPORTANT)
 
+Kindness TD targets **js13kGames 2026**. The 2026 theme is
+**Unicorns and Rainbows**, and the theme is a scored rating criterion.
+
+- The submitted `.zip` must be **13,312 bytes or less**
+- `index.html` must be at the top level of the zip and playable once unzipped
+- **No external resources** at all: no CDNs, no web fonts, no analytics
+- Must run with **no console errors** in latest Chrome and Firefox
+- If storage is ever added, namespace keys (`ktd:`) and never call
+  `localStorage.clear()` - games on the site share one origin
 - Keep code size small
-- Avoid dependencies
+- Avoid runtime dependencies
 - Reuse logic where possible
 - Avoid duplication
 - Prefer simple math over libraries
 
+Run `npm run build` after changes: it produces `dist/kindness-td.zip` and fails
+if the package goes over budget. Full checklist in `JS13K-2026.md`.
+
 ---
+
+## Music
+
+Square-wave lead over a triangle bass, scheduled ahead onto the WebAudio clock
+from `update()` rather than a timer, so the beat does not wobble. Notes are hex
+semitone offsets from A3 in a 32-character string; `.` is a rest.
+
+- **Title screen**: Kindness March (`TITLE_TUNE`)
+- **While a wave runs**: Sunny Skip (`ROUND_TUNE`)
+- **Round popup, paused, game over**: silence
+
+Each round starts its loop from step 0 rather than resuming mid-phrase, so the
+music lines up with the wave.
+
+Transitions fade over 500ms via a gain ramp; the tune only swaps once the
+fade-out has finished, so nothing cuts abruptly.
+
+`startAudio()` runs once at load so the title tune starts on its own where the
+browser allows it, and again from `pointerdown` for browsers that require a
+gesture. The `resume()` rejection is caught: an unhandled one would log an
+error, and the competition requires a clean console.
+
+Two mute controls, both writing the same setting: a music-note button in the
+title screen's top-right corner (notes dim and a white slash crosses them when
+muted) and a Music On/Off button on the pause screen. Saved to `localStorage`
+under `ktd:music` - namespaced because js13k games share one origin - wrapped
+in try/catch since private browsing throws.
 
 ## Performance Rules
 
@@ -233,7 +304,7 @@ Avoid:
 
 ## Optional Enhancements (Safe to Suggest)
 
-- UI buttons for tower selection
+- UI buttons for buddy selection
 - Path visualization
 - Grid snapping polish
 - Basic sound effects

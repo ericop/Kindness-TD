@@ -9,12 +9,31 @@ const HAPPY_HANGOUT = {
   height: 70
 };
 const BASE_ROUND_SPAWN = 25;
+const BOSS_MINION_COUNT = 50;
 const ROUND_SPAWN_INCREASE = 10;
 const HEADPHONE_GRUMPY_INTERVAL = 6;
 const DOG_ALLERGY_GRUMPY_INTERVAL = 6;
 const DOG_ALLERGY_GRUMPY_OFFSET = 2;
 const NO_HUG_GRUMPY_INTERVAL = 6;
 const NO_HUG_GRUMPY_OFFSET = 4;
+// 7 % 6 === 1, which is the one residue the three mod-6 traits above leave
+// free, so a Stress Eater never doubles up with headphones, a mask or thorns.
+const STRESS_EATER_INTERVAL = 12;
+const STRESS_EATER_OFFSET = 7;
+// Rounds 1-3 keep their original gentle curve; the steep part starts after,
+// which is where the game had been going slack. Per-grumpy toughness used to
+// grow by only +1 a round - 100 to 109 across all ten rounds, +9% - while the
+// player banked ~4,660 Kindness by round 8 and buddies persist between rounds,
+// so the crew compounded and the grumpies did not. At 20, difficulty growth
+// from round 3 to round 9 is 4.2x where it used to be 2.0x.
+const EASY_ROUNDS = 3;
+const ROUND_SAD_INCREASE = 20;
+
+function getRoundSadBonus(roundNumber) {
+  return Math.max(0, roundNumber - 1)
+       + Math.max(0, roundNumber - EASY_ROUNDS) * ROUND_SAD_INCREASE;
+}
+
 const BASE_SPAWN_DELAY = 0.6;
 const ROUND_SPAWN_SPEEDUP = 0.9;
 const instructionButton = {
@@ -31,13 +50,19 @@ const pauseButton = {
 };
 const pauseContinueButton = {
   x: canvas.width / 2 - 110,
-  y: 196,
+  y: 180,
   w: 220,
   h: 42
 };
 const pauseMenuButton = {
   x: canvas.width / 2 - 110,
-  y: 248,
+  y: 230,
+  w: 220,
+  h: 42
+};
+const pauseMusicButton = {
+  x: canvas.width / 2 - 110,
+  y: 280,
   w: 220,
   h: 42
 };
@@ -46,40 +71,64 @@ function getRoundSpawnCount(roundNumber) {
   return BASE_ROUND_SPAWN + (roundNumber - 1) * ROUND_SPAWN_INCREASE;
 }
 
+// Boss rounds replace the normal spawn count with one boss plus a fixed minion
+// train, so the round intro has to match what startRound will actually build.
+function getRoundGrumpyCount(roundNumber) {
+  const isBossRound = roundNumber === 5 || roundNumber === 10;
+  return isBossRound ? BOSS_MINION_COUNT + 1 : getRoundSpawnCount(roundNumber);
+}
+
 function getSpawnDelayForRound(roundNumber) {
   return BASE_SPAWN_DELAY * Math.pow(ROUND_SPAWN_SPEEDUP, roundNumber - 1);
 }
 
-function pointInRect(x, y, rect) {
-  return (
-    x >= rect.x &&
-    x <= rect.x + rect.w &&
-    y >= rect.y &&
-    y <= rect.y + rect.h
-  );
-}
+// The last page of every round's deck. It replaces a banner that faded over
+// the top of gameplay after 2.5s, which could not be read in time and, because
+// it never set a fill colour, drew in whatever shade the previous draw call
+// left behind.
+function getRoundIntroPage(roundNumber) {
+  const hpBonus = getRoundSadBonus(roundNumber);
+  const count = getRoundGrumpyCount(roundNumber);
 
-function doesCellOverlapRect(cx, cy, rect) {
-  const cellLeft = cx * GRID_SIZE;
-  const cellTop = cy * GRID_SIZE;
-  const cellRight = cellLeft + GRID_SIZE;
-  const cellBottom = cellTop + GRID_SIZE;
+  let body = `${count} grumpies are heading in. This round beefs them up by +${hpBonus} sad meter.`;
+  if (roundNumber < state.totalRounds) {
+    const nextJump = getRoundSadBonus(roundNumber + 1) - hpBonus;
+    body += ` Next round adds +${ROUND_SPAWN_INCREASE} grumpies and +${nextJump} sad meter.`;
+  }
 
-  return (
-    cellLeft < rect.x + rect.width &&
-    cellRight > rect.x &&
-    cellTop < rect.y + rect.height &&
-    cellBottom > rect.y
-  );
+  return { title: `Round ${roundNumber} Incoming`, body };
 }
 
 function getInstructionPages(roundNumber) {
   if (roundNumber === 1) {
+    // Advanced Mode stays a surprise until it is earned, so the intro only
+    // mentions it to someone already playing it, where it explains why
+    // everything suddenly takes twice the kindness (hpMultiplier, createGrumpy).
+    const intro = "This game is all about kindness and spreading love to people who have grumpy hearts, so they can go hang out in the Happy Hangout. Build your kindness crew to do this.";
+
     return [
       {
         title: "Round 1",
-        body: "This game is all about kindness and spreading love to people who have grumpy hearts, so they can go hang out in the Happy Hangout. Build towers to do this."
-      }
+        body: state.advancedMode
+          ? intro + " You are playing Advanced Mode: every grumpy and boss starts with twice the sadness, so each one needs twice as much kindness!"
+          : intro
+      },
+      ...(state.advancedMode ? [{
+        title: "The Stress Eater",
+        body: "Advanced Mode brings the Stress Eater. Cookies are scattered around town and he heads straight for the nearest one instead of the exit, stopping to nibble. He has twice the sadness of a normal grumpy, so use the time he wastes snacking.",
+        icon: { isStressEater: true }
+      }] : []),
+      state.advancedMode
+        ? {
+            title: "HappyHorn Is Proud of You",
+            body: "You finished all ten rounds, so HappyHorn is not making you save up this time. She is already waiting in the middle of town, for free, painting rainbows from the very first grumpy.",
+            buddyIcon: "unicorn"
+          }
+        : {
+            title: "Meet HappyHorn",
+            body: "HappyHorn the Unicorn is your hero. She flies circles around the nearest grumpy, painting a rainbow that cheers up every grumpy it touches. Only one at a time, so save up for her.",
+            buddyIcon: "unicorn"
+          }
     ];
   }
 
@@ -97,7 +146,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 3",
-        body: "Some grumpies are allergic to therapy dogs. Their mask icon means TherapyDog towers will skip them, so use your other kindness towers instead.",
+        body: "Some grumpies are allergic to therapy dogs. Their mask icon means Therapy Dogs will skip them, so use your other buddies instead.",
         icon: { hasHeadphones: false, hasDogAllergy: true }
       }
     ];
@@ -107,7 +156,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 4",
-        body: "Some grumpies do not like hugs. Their crossed-arms icon means Hugger towers will leave them alone, so use words, radio, or dogs to help them instead.",
+        body: "Some grumpies do not like hugs. Their prickly thorns mean Huggers will leave them alone, so use words, radio, or dogs to help them instead.",
         icon: { hasHeadphones: false, hasDogAllergy: false, avoidsHugs: true }
       }
     ];
@@ -117,7 +166,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 5 Boss Fight",
-        body: "A huge headphone grumpy is stomping in. Headphone Hank tunes out Affirming Words and Glad Radio, has a massive grumpy heart, but he is still partial to pets, so TherapyDog towers can help.",
+        body: "A huge headphone grumpy is stomping in. Headphone Hank tunes out Affirming Words and Glad Radio, has a massive grumpy heart, but he is still partial to pets, so Therapy Dogs can help.",
         icon: { isBoss: true, hasHeadphones: true, bossName: "Headphone Hank", bossHp: 1500 }
       }
     ];
@@ -127,8 +176,8 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 10 Boss Fight",
-        body: "Negative Neil is the gloomiest grump in town. He lumbers in bigger than everyone else and slowly turns nearby towers grumpy, so protect your kindness crew while you cheer him up.",
-        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1000 }
+        body: "Negative Neil is the gloomiest grump in town. Anything he brushes past goes grumpy in half a second, so keep your kindness crew off his route. HappyHorn is the one he cannot sour - let her circle him.",
+        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1500 }
       }
     ];
   }
@@ -137,19 +186,15 @@ function getInstructionPages(roundNumber) {
 }
 
 function beginRoundFlow(roundNumber) {
-  const pages = getInstructionPages(roundNumber);
+  // Always at least one page, so every round opens with a popup the player
+  // dismisses rather than a banner that vanishes on its own.
+  const pages = [...getInstructionPages(roundNumber), getRoundIntroPage(roundNumber)];
 
-  if (pages.length) {
-    state.pendingRound = roundNumber;
-    state.instructionPages = pages;
-    state.instructionPageIndex = 0;
-    state.gameMode = "instructions";
-    placementMenu.active = false;
-    return;
-  }
-
-  startRound(roundNumber);
-  state.gameMode = "playing";
+  state.pendingRound = roundNumber;
+  state.instructionPages = pages;
+  state.instructionPageIndex = 0;
+  state.gameMode = "instructions";
+  placementMenu.active = false;
 }
 
 function moveToHappyHangout(grumpy, dt) {
@@ -169,6 +214,13 @@ function refreshGrumpyPaths() {
   state.grumpies.forEach(grumpy => {
     if (grumpy.isHappy || grumpy.reachedEnd) return;
 
+    // A Stress Eater is heading for a cookie, not the exit, so he gets
+    // repathed to his own goal instead.
+    if (grumpy.isStressEater) {
+      retargetStressEater(grumpy);
+      return;
+    }
+
     const startCell = getCell(grumpy.x, grumpy.y);
     const path = findPath(
       { x: startCell.cx, y: startCell.cy },
@@ -182,25 +234,30 @@ function refreshGrumpyPaths() {
   });
 }
 
-function resetTowerTargets() {
-  hugTowers.forEach(tower => {
-    tower.target = null;
+function resetBuddyTargets() {
+  hugBuddies.forEach(buddy => {
+    buddy.target = null;
   });
 
-  therapyDogs.forEach(tower => {
-    tower.targets = [];
+  therapyDogs.forEach(buddy => {
+    buddy.targets = [];
   });
 
-  affirmTowers.forEach(tower => {
-    tower.target = null;
+  affirmBuddies.forEach(buddy => {
+    buddy.target = null;
+  });
+
+  unicorns.forEach(buddy => {
+    buddy.target = null;
   });
 }
 
-function forEachTower(callback) {
-  hugTowers.forEach(tower => callback(tower, "hug"));
-  therapyDogs.forEach(tower => callback(tower, "dog"));
-  affirmTowers.forEach(tower => callback(tower, "affirm"));
-  radioTowers.forEach(tower => callback(tower, "radio"));
+function forEachBuddy(callback) {
+  hugBuddies.forEach(buddy => callback(buddy, "hug"));
+  therapyDogs.forEach(buddy => callback(buddy, "dog"));
+  affirmBuddies.forEach(buddy => callback(buddy, "affirm"));
+  radioBuddies.forEach(buddy => callback(buddy, "radio"));
+  unicorns.forEach(buddy => callback(buddy, "unicorn"));
 }
 
 function createStandardRoundGrumpy(roundNumber, index, spawnDelay) {
@@ -213,9 +270,13 @@ function createStandardRoundGrumpy(roundNumber, index, spawnDelay) {
       index % DOG_ALLERGY_GRUMPY_INTERVAL === DOG_ALLERGY_GRUMPY_OFFSET,
     avoidsHugs:
       roundNumber >= 4 &&
-      index % NO_HUG_GRUMPY_INTERVAL === NO_HUG_GRUMPY_OFFSET
+      index % NO_HUG_GRUMPY_INTERVAL === NO_HUG_GRUMPY_OFFSET,
+    isStressEater:
+      state.advancedMode &&
+      index % STRESS_EATER_INTERVAL === STRESS_EATER_OFFSET
   });
-  g.path = findPath(START, END) || [];
+  if (g.isStressEater) retargetStressEater(g);
+  else g.path = findPath(START, END) || [];
   return g;
 }
 
@@ -224,13 +285,14 @@ function startRound(roundNumber) {
   state.grumpies = [];
   state.happyCount = 0;
   state.totalSpawned = getRoundSpawnCount(roundNumber);
-  state.waveTextTimer = 2.5;
   placementMenu.active = false;
   textBubbles.length = 0;
-  resetTowerTargets();
+  rainbowTrail.length = 0;
+  spawnCookies();
+  resetBuddyTargets();
 
   if (roundNumber === 5) {
-    const minionCount = 50;
+    const minionCount = BOSS_MINION_COUNT;
     state.totalSpawned = minionCount + 1;
     const spawnDelay = getSpawnDelayForRound(roundNumber);
     const boss = createGrumpy(0, {
@@ -249,13 +311,13 @@ function startRound(roundNumber) {
   }
 
   if (roundNumber === 10) {
-    const minionCount = 50;
+    const minionCount = BOSS_MINION_COUNT;
     state.totalSpawned = minionCount + 1;
     const spawnDelay = getSpawnDelayForRound(roundNumber);
     const boss = createGrumpy(0, {
       isBoss: true,
       bossName: "Negative Neil",
-      bossHp: 1000
+      bossHp: 1500
     });
     boss.path = findPath(START, END) || [];
     state.grumpies.push(boss);
@@ -294,6 +356,12 @@ const creditsButton = {
   w: 170,
   h: 40
 };
+const musicToggleButton = {
+  x: canvas.width - 46,
+  y: 10,
+  w: 36,
+  h: 36
+};
 const creditsCloseButton = {
   x: canvas.width / 2 - 90,
   y: canvas.height - 74,
@@ -301,29 +369,35 @@ const creditsCloseButton = {
   h: 40
 };
 
-const towerCosts = {
+const buddyCosts = {
   hug: 30,
   dog: 80,
   affirm: 20,
-  radio: 50
+  radio: 50,
+  unicorn: 120
 };
 
 const buildMenuButtons = [
-  { label: "Hugger", towerType: "hug", direction: "up" },
-  { label: "TherapyDog", towerType: "dog", direction: "right" },
-  { label: "AffirmingWords", towerType: "affirm", direction: "down" },
-  { label: "GladRadio", towerType: "radio", direction: "left" }
+  { label: "Hugger", buddyType: "hug" },
+  { label: "TherapyDog", buddyType: "dog" },
+  { label: "AffirmingWords", buddyType: "affirm" },
+  { label: "GladRadio", buddyType: "radio" },
+  { label: "HappyHorn", buddyType: "unicorn" }
 ];
-const TOWER_PIXEL_DIM = 10;
+
+const BUILD_MENU_COLS = 2;
+const BUILD_MENU_GAP = 4;
+const BUILD_MENU_TOP = 44;   // clears the Pause button
+const BUDDY_PIXEL_DIM = 10;
 
 // =========================
 // PIXEL ART DEFINITIONS
 // Each object in the array represents a "pixel block".
 // x/y = position in mini grid, c = color
-// Comments explain what part of the tower it is
+// Comments explain what part of the buddy it is
 // =========================
 
-const towerPixelArt = {
+const buddyPixelArt = {
   hug: [
     { x: 3, y: 0, c: "#ff7faa" }, { x: 6, y: 0, c: "#ff7faa" },
     { x: 2, y: 1, c: "#ff7faa" }, { x: 3, y: 1, c: "#ffb3c8" }, { x: 4, y: 1, c: "#ff7faa" }, { x: 5, y: 1, c: "#ff7faa" }, { x: 6, y: 1, c: "#ffb3c8" }, { x: 7, y: 1, c: "#ff7faa" },
@@ -344,9 +418,13 @@ const towerPixelArt = {
     { x: 1, y: 3, c: "#f4c78a" }, { x: 2, y: 3, c: "#f4c78a" }, { x: 3, y: 3, c: "#111111" }, { x: 4, y: 3, c: "#f8ddb4" }, { x: 5, y: 3, c: "#f8ddb4" }, { x: 6, y: 3, c: "#111111" }, { x: 7, y: 3, c: "#f4c78a" }, { x: 8, y: 3, c: "#f4c78a" },
     { x: 2, y: 4, c: "#d99b58" }, { x: 3, y: 4, c: "#f6e4d4" }, { x: 4, y: 4, c: "#444444" }, { x: 5, y: 4, c: "#f6e4d4" }, { x: 6, y: 4, c: "#f6e4d4" }, { x: 7, y: 4, c: "#d99b58" },
     { x: 2, y: 5, c: "#d99b58" }, { x: 3, y: 5, c: "#d99b58" }, { x: 4, y: 5, c: "#c83c4a" }, { x: 5, y: 5, c: "#c83c4a" }, { x: 6, y: 5, c: "#d99b58" }, { x: 7, y: 5, c: "#d99b58" },
-    { x: 3, y: 6, c: "#8f5a2a" }, { x: 4, y: 6, c: "#d99b58" }, { x: 5, y: 6, c: "#d99b58" }, { x: 6, y: 6, c: "#8f5a2a" },
+    // Lime collar with a gold tag, sitting on the neck. Red sat directly above
+    // the red tongue and the two blurred together. Lime is chosen dark enough
+    // (hue 89) that the single gold pixel still reads: 2.70 contrast against
+    // #ffe98a, where a brighter lime drops it to ~1.2 and the tag disappears.
+    { x: 3, y: 6, c: "#5f9e1a" }, { x: 4, y: 6, c: "#ffe98a" }, { x: 5, y: 6, c: "#5f9e1a" }, { x: 6, y: 6, c: "#5f9e1a" },
     { x: 2, y: 7, c: "#8f5a2a" }, { x: 3, y: 7, c: "#d99b58" }, { x: 4, y: 7, c: "#d99b58" }, { x: 5, y: 7, c: "#d99b58" }, { x: 6, y: 7, c: "#d99b58" }, { x: 7, y: 7, c: "#8f5a2a" },
-    { x: 3, y: 8, c: "#2eac6b" }, { x: 4, y: 8, c: "#dddddd" }, { x: 5, y: 8, c: "#2eac6b" }, { x: 6, y: 8, c: "#2eac6b" }, 
+    { x: 3, y: 8, c: "#8f5a2a" }, { x: 4, y: 8, c: "#d99b58" }, { x: 5, y: 8, c: "#d99b58" }, { x: 6, y: 8, c: "#8f5a2a" }, 
     { x: 3, y: 9, c: "#8f5a2a" }, { x: 4, y: 9, c: "#8f5a2a" }, { x: 5, y: 9, c: "#8f5a2a" }, { x: 6, y: 9, c: "#8f5a2a" }
   ],
 
@@ -395,6 +473,41 @@ radio: [
   // feet
   { x: 2, y: 8, c: "#222222" }, { x: 7, y: 8, c: "#222222" }
 ],
+
+  // HappyHorn the Unicorn, side view facing right: golden horn, rainbow mane
+  // running down the neck, rainbow tail trailing off the back.
+  unicorn: [
+    // horn
+    { x: 7, y: 0, c: "#ffe98a" },
+    { x: 7, y: 1, c: "#ffc21f" },
+
+    // rainbow mane, sweeping from the horn down the neck
+    { x: 5, y: 1, c: "#ff5d73" }, { x: 6, y: 1, c: "#ff9f45" },
+    { x: 4, y: 2, c: "#ff5d73" }, { x: 5, y: 2, c: "#ffd93d" },
+    { x: 3, y: 3, c: "#ff9f45" }, { x: 4, y: 3, c: "#7ee081" },
+    { x: 2, y: 4, c: "#4dc3ff" }, { x: 3, y: 4, c: "#b98cff" },
+
+    // head, eye and snout
+    { x: 6, y: 2, c: "#fff6fb" }, { x: 7, y: 2, c: "#ffffff" }, { x: 8, y: 2, c: "#fff6fb" },
+    { x: 5, y: 3, c: "#ffffff" }, { x: 6, y: 3, c: "#ffffff" }, { x: 7, y: 3, c: "#3b2340" }, { x: 8, y: 3, c: "#ffc9de" },
+
+    // neck into body
+    { x: 4, y: 4, c: "#ffffff" }, { x: 5, y: 4, c: "#ffffff" }, { x: 6, y: 4, c: "#ffffff" }, { x: 7, y: 4, c: "#fff6fb" }, { x: 8, y: 4, c: "#ffc9de" },
+
+    // body
+    { x: 1, y: 5, c: "#fff6fb" }, { x: 2, y: 5, c: "#ffffff" }, { x: 3, y: 5, c: "#ffffff" }, { x: 4, y: 5, c: "#ffffff" }, { x: 5, y: 5, c: "#ffffff" }, { x: 6, y: 5, c: "#ffffff" }, { x: 7, y: 5, c: "#fff6fb" },
+    { x: 1, y: 6, c: "#fff6fb" }, { x: 2, y: 6, c: "#ffffff" }, { x: 3, y: 6, c: "#ffffff" }, { x: 4, y: 6, c: "#ffffff" }, { x: 5, y: 6, c: "#ffffff" }, { x: 6, y: 6, c: "#ffffff" }, { x: 7, y: 6, c: "#fff6fb" },
+
+    // rainbow tail
+    { x: 0, y: 4, c: "#ff5d73" }, { x: 0, y: 5, c: "#ffd93d" }, { x: 0, y: 6, c: "#7ee081" }, { x: 0, y: 7, c: "#4dc3ff" },
+
+    // legs
+    { x: 2, y: 7, c: "#ffffff" }, { x: 3, y: 7, c: "#fff6fb" }, { x: 5, y: 7, c: "#fff6fb" }, { x: 6, y: 7, c: "#ffffff" },
+    { x: 2, y: 8, c: "#ffffff" }, { x: 3, y: 8, c: "#fff6fb" }, { x: 5, y: 8, c: "#fff6fb" }, { x: 6, y: 8, c: "#ffffff" },
+
+    // hooves
+    { x: 2, y: 9, c: "#b98cff" }, { x: 3, y: 9, c: "#b98cff" }, { x: 5, y: 9, c: "#b98cff" }, { x: 6, y: 9, c: "#b98cff" }
+  ],
 };
 
 const menuGrumpies = [];
@@ -402,14 +515,33 @@ const menuGrumpies = [];
 function ensureMenuGrumpies() {
   if (menuGrumpies.length) return;
 
-  menuGrumpies.push(
-    { x: 160, y: 250, vx: 18, vy: 7, hasHeadphones: false, hasDogAllergy: false },
-    { x: 240, y: 295, vx: 14, vy: -6, hasHeadphones: true, hasDogAllergy: false },
-    { x: 375, y: 260, vx: -16, vy: 5, hasHeadphones: false, hasDogAllergy: true, avoidsHugs: false },
-    { x: 520, y: 300, vx: 15, vy: -5, hasHeadphones: true, hasDogAllergy: false, avoidsHugs: false },
-    { x: 455, y: 315, vx: 13, vy: 4, hasHeadphones: false, hasDogAllergy: false, avoidsHugs: true },
-    { x: 610, y: 248, vx: -17, vy: 6, hasHeadphones: false, hasDogAllergy: false }
-  );
+  // Everyone on the title screen has already been cheered up - it is the
+  // Happy Hangout, not a wave. isHappy makes drawGrumpySprite use the gold
+  // body and the smile instead of the frown.
+  const drifters = [
+    [160, 250,  18,  7, 0, 0, 0],
+    [240, 295,  14, -6, 1, 0, 0],
+    [375, 260, -16,  5, 0, 1, 0],
+    [520, 300,  15, -5, 1, 0, 0],
+    [455, 315,  13,  4, 0, 0, 1],
+    [610, 248, -17,  6, 0, 0, 0],
+    [120, 305,  16, -5, 0, 0, 1],
+    [300, 232, -14,  6, 0, 0, 0],
+    [420, 288,  17,  5, 0, 0, 0],
+    [560, 244, -15, -6, 0, 1, 0],
+    [660, 300,  13,  6, 1, 0, 0],
+    [200, 268, -18, -4, 0, 0, 0]
+  ];
+
+  for (const [x, y, vx, vy, phones, allergy, nohugs] of drifters) {
+    menuGrumpies.push({
+      x, y, vx, vy,
+      isHappy: true,
+      hasHeadphones: !!phones,
+      hasDogAllergy: !!allergy,
+      avoidsHugs: !!nohugs
+    });
+  }
 }
 
 function updateMenuGrumpies(dt) {
@@ -469,62 +601,94 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
     ctx.fillRect(grumpy.x-10 * scale,grumpy.y-18 * scale,20 * scale*(1-grumpy.sad/grumpy.maxSad),3 * scale);
   }
 
+  // Every offset here is scaled. Unscaled, the band sat at radius 11 against
+  // Headphone Hank's radius-15 head - 4px inside his skull, with the earcups
+  // not even reaching his edge, which is why they looked clamped on.
   if (grumpy.hasHeadphones) {
     ctx.strokeStyle = 'rgba(190, 120, 255, 0.65)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 4 * scale;
     ctx.beginPath();
-    ctx.arc(grumpy.x, grumpy.y - 4, 11, Math.PI, 2 * Math.PI);
+    ctx.arc(grumpy.x, grumpy.y - 4 * scale, 11 * scale, Math.PI, 2 * Math.PI);
     ctx.stroke();
 
     ctx.strokeStyle = '#5c2d91';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * scale;
     ctx.beginPath();
-    ctx.arc(grumpy.x, grumpy.y - 4, 8, Math.PI, 2 * Math.PI);
+    ctx.arc(grumpy.x, grumpy.y - 4 * scale, 8 * scale, Math.PI, 2 * Math.PI);
     ctx.stroke();
 
     ctx.fillStyle = '#8750c7';
-    ctx.fillRect(grumpy.x - 14, grumpy.y - 2, 6, 8);
-    ctx.fillRect(grumpy.x + 8, grumpy.y - 2, 6, 8);
+    ctx.fillRect(grumpy.x - 14 * scale, grumpy.y - 2 * scale, 6 * scale, 8 * scale);
+    ctx.fillRect(grumpy.x + 8 * scale, grumpy.y - 2 * scale, 6 * scale, 8 * scale);
 
     ctx.fillStyle = '#b28ae6';
-    ctx.fillRect(grumpy.x - 13, grumpy.y, 2, 4);
-    ctx.fillRect(grumpy.x + 11, grumpy.y, 2, 4);
+    ctx.fillRect(grumpy.x - 13 * scale, grumpy.y, 2 * scale, 4 * scale);
+    ctx.fillRect(grumpy.x + 11 * scale, grumpy.y, 2 * scale, 4 * scale);
   }
 
   if (grumpy.hasDogAllergy) {
     ctx.fillStyle = '#f5f7fa';
-    ctx.fillRect(grumpy.x - 6, grumpy.y + 1, 12, 5);
+    ctx.fillRect(grumpy.x - 6 * scale, grumpy.y + 1 * scale, 12 * scale, 5 * scale);
 
     ctx.fillStyle = '#d9dee5';
-    ctx.fillRect(grumpy.x - 4, grumpy.y + 2, 8, 1);
+    ctx.fillRect(grumpy.x - 4 * scale, grumpy.y + 2 * scale, 8 * scale, 1 * scale);
 
     ctx.strokeStyle = '#b8c2cc';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 * scale;
     ctx.beginPath();
-    ctx.moveTo(grumpy.x - 6, grumpy.y + 2);
-    ctx.lineTo(grumpy.x - 10, grumpy.y + 1);
-    ctx.moveTo(grumpy.x + 6, grumpy.y + 2);
-    ctx.lineTo(grumpy.x + 10, grumpy.y + 1);
+    ctx.moveTo(grumpy.x - 6 * scale, grumpy.y + 2 * scale);
+    ctx.lineTo(grumpy.x - 10 * scale, grumpy.y + 1 * scale);
+    ctx.moveTo(grumpy.x + 6 * scale, grumpy.y + 2 * scale);
+    ctx.lineTo(grumpy.x + 10 * scale, grumpy.y + 1 * scale);
     ctx.stroke();
   }
 
-  if (grumpy.avoidsHugs) {
-    ctx.strokeStyle = '#c84d7a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(grumpy.x - 9, grumpy.y + 1);
-    ctx.lineTo(grumpy.x - 5, grumpy.y + 5);
-    ctx.lineTo(grumpy.x + 2, grumpy.y + 8);
-    ctx.moveTo(grumpy.x + 9, grumpy.y + 1);
-    ctx.lineTo(grumpy.x + 5, grumpy.y + 5);
-    ctx.lineTo(grumpy.x - 2, grumpy.y + 8);
-    ctx.stroke();
+  // Thorns drop away once they cheer up: nothing is left to warn the player
+  // about, and softening as they head for the Happy Hangout is the whole point
+  // of the game.
+  if (grumpy.avoidsHugs && !grumpy.isHappy) {
+    // Prickly. The thorns change the silhouette rather than adding detail
+    // inside it, so a no-hug grumpy can be picked out of a moving queue
+    // without looking straight at them. Thorn tips stop at 13.5, which keeps
+    // them clear of the sad meter at y-15.
+    ctx.fillStyle = '#5f7180';
+    const thornCount = 10;
+    const thornHalfWidth = 0.17;
 
-    ctx.fillStyle = '#f0c2ad';
-    ctx.fillRect(grumpy.x - 10, grumpy.y, 2, 2);
-    ctx.fillRect(grumpy.x + 8, grumpy.y, 2, 2);
-    ctx.fillRect(grumpy.x + 1, grumpy.y + 7, 2, 2);
-    ctx.fillRect(grumpy.x - 3, grumpy.y + 7, 2, 2);
+    for (let i = 0; i < thornCount; i++) {
+      const angle = (i / thornCount) * Math.PI * 2 - Math.PI / 2;
+      const a0 = angle - thornHalfWidth;
+      const a1 = angle + thornHalfWidth;
+
+      ctx.beginPath();
+      ctx.moveTo(grumpy.x + Math.cos(a0) * 9 * scale, grumpy.y + Math.sin(a0) * 9 * scale);
+      ctx.lineTo(grumpy.x + Math.cos(angle) * 13.5 * scale, grumpy.y + Math.sin(angle) * 13.5 * scale);
+      ctx.lineTo(grumpy.x + Math.cos(a1) * 9 * scale, grumpy.y + Math.sin(a1) * 9 * scale);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // The Stress Eater carries his snack, which is what tells him apart at a
+  // glance; the extra 1.25 scale reads as the doubled sad meter.
+  if (grumpy.isStressEater && !grumpy.isHappy) {
+    drawCookie(ctx, grumpy.x + 10 * scale, grumpy.y + 5 * scale, 5 * scale);
+
+    if (grumpy.eatTimer > 0) {
+      ctx.fillStyle = "#d79a55";
+      for (let i = 0; i < 3; i++) {
+        const a = i * 2.1 + grumpy.eatTimer * 4;
+        ctx.beginPath();
+        ctx.arc(
+          grumpy.x + Math.cos(a) * 13 * scale,
+          grumpy.y + 8 * scale + Math.sin(a) * 3 * scale,
+          1.4 * scale,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
+    }
   }
 
   if(grumpy.isHugged){
@@ -544,7 +708,14 @@ function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
     ctx.font = `${Math.max(12, 12 * scale)}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    ctx.fillText(grumpy.name, grumpy.x, grumpy.y - radius - 8);
+    // Named grumpies spawn hard against the left edge, where a centred label
+    // gets its first few letters cut off. Keep the whole label on canvas.
+    const half = ctx.measureText(grumpy.name).width / 2;
+    ctx.fillText(
+      grumpy.name,
+      clamp(grumpy.x, half + 4, canvas.width - half - 4),
+      grumpy.y - radius - 8
+    );
   }
 }
 
@@ -560,12 +731,23 @@ function startGame(advancedMode = false) {
   state.advancedMode = advancedMode;
   state.justUnlockedAdvanced = false;
 
-  hugTowers.length = 0;
+  hugBuddies.length = 0;
   therapyDogs.length = 0;
-  affirmTowers.length = 0;
-  radioTowers.length = 0;
+  affirmBuddies.length = 0;
+  radioBuddies.length = 0;
+  unicorns.length = 0;
+  rainbowTrail.length = 0;
+  cookies.length = 0;
   grid.blocked.clear();
   textBubbles.length = 0;
+
+  // Advanced doubles every grumpy's sad meter, but the player still starts on
+  // 100 Kindness while HappyHorn costs 120 - round 1 was close to unwinnable.
+  // She joins for free, in the middle of town.
+  if (advancedMode) {
+    placeBuddy(Math.floor(grid.cols / 2), Math.floor(grid.rows / 2), "unicorn", true);
+  }
+
   beginRoundFlow(1);
 }
 
@@ -577,10 +759,13 @@ function createGrumpy(delay=0, options = {}){
   const hasDogAllergy = !!options.hasDogAllergy;
   const avoidsHugs = !!options.avoidsHugs;
   const isBoss = !!options.isBoss;
+  const isStressEater = !!options.isStressEater;
   const hpMultiplier = state.advancedMode ? 2 : 1;
-  const roundHpBonus = Math.max(0, state.currentRound - 1);
+  // Double a normal grumpy of the same round, on top of the Advanced doubling.
+  const stressEaterMultiplier = isStressEater ? 2 : 1;
+  const roundHpBonus = getRoundSadBonus(state.currentRound);
   const baseSad = isBoss ? (options.bossHp || 1000) : 100;
-  const maxSad = (baseSad + roundHpBonus) * hpMultiplier;
+  const maxSad = (baseSad + roundHpBonus) * hpMultiplier * stressEaterMultiplier;
   return {
     x: START.x*GRID_SIZE+20,
     y: START.y*GRID_SIZE+20,
@@ -594,8 +779,11 @@ function createGrumpy(delay=0, options = {}){
     hasDogAllergy,
     avoidsHugs,
     isBoss,
-    scale:isBoss ? 1.5 : 1,
-    name:isBoss ? (options.bossName || "Negative Neil") : "",
+    isStressEater,
+    targetCookie:null,
+    eatTimer:0,
+    scale:isBoss ? 1.5 : isStressEater ? 1.25 : 1,
+    name:isBoss ? (options.bossName || "Negative Neil") : isStressEater ? "Stress Eater" : "",
     allergicToDogs: hasDogAllergy,
     ignoresAffirmations: hasHeadphones,
     ignoresRadio: hasHeadphones,
@@ -634,6 +822,13 @@ function createGrumpy(delay=0, options = {}){
         return;
       }
 
+      // Parked at a cookie. Standing still is the whole point: it is time the
+      // player's buddies get for free.
+      if (this.eatTimer > 0) {
+        this.eatTimer -= dt;
+        return;
+      }
+
       const node=this.path[this.pathIndex];
       if(node){
         const tx=node.x*GRID_SIZE+20;
@@ -647,6 +842,21 @@ function createGrumpy(delay=0, options = {}){
           this.x+=(dx/d)*this.speed*dt;
           this.y+=(dy/d)*this.speed*dt;
         }
+      } else if (this.isStressEater && this.targetCookie && !this.targetCookie.eaten) {
+        // Arrived at a cookie rather than the exit, so this is not an escape.
+        this.targetCookie.eaten = true;
+        this.targetCookie = null;
+        this.eatTimer = COOKIE_EAT_TIME;
+        textBubbles.push({
+          text: "nom nom",
+          x: this.x,
+          y: this.y - 22,
+          target: null,
+          life: 1.2,
+          speed: 0,
+          hit: false
+        });
+        retargetStressEater(this);
       } else if(!this.reachedEnd){
         this.reachedEnd=true;
         this.active=false;
@@ -663,12 +873,335 @@ function createGrumpy(delay=0, options = {}){
 }
 
 // =========================
-// TOWERS
+// MUSIC
+// Square lead over a triangle bass. Notes are scheduled ahead onto the
+// WebAudio clock rather than fired from a timer, so the beat does not wobble
+// when the main thread is busy. Each character is a hex semitone offset from
+// A3; "." is a rest.
 // =========================
-const hugTowers=[];
+const MUSIC_ROOT = 220;
+const MUSIC_LOOKAHEAD = 0.25;   // seconds of notes queued in advance
+const MUSIC_VOLUME = 0.4;
+const MUSIC_FADE = 0.5;         // seconds to fade out and back in
+
+// Sunny Skip, while a wave is running.
+const ROUND_TUNE = {
+  t: 0.125,
+  m: "047c7404259e9525047c7404b9754020",
+  b: "0...0...5...5...0...0...7...7..."
+};
+
+// Kindness March, on the title screen.
+const TITLE_TUNE = {
+  t: 0.15,
+  m: "c.b.9.7.9...7...5.7.9.b.c.......",
+  b: "0.0.5.5.2.2.7.7.0.0.5.5.7.7.0.0."
+};
+
+let audioCtx = null;
+let musicGain;
+let musicTune = null;           // what is sounding right now
+let musicWanted = null;         // what the current game mode asks for
+let musicSwitchAt = 0;          // when the fade-out finishes and we swap
+let musicStep = 0;
+let musicNext = 0;
+let musicOn = true;
+
+// Namespaced key: js13k games share one origin, so the rules require a prefix.
+// Private browsing throws on access, hence the try.
+try { musicOn = localStorage.getItem("ktd:music") !== "0"; } catch (e) {}
+
+function musicVoice(semi, type, volume, length, at) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = MUSIC_ROOT * Math.pow(2, semi / 12);
+  gain.gain.setValueAtTime(volume, at);
+  gain.gain.exponentialRampToValueAtTime(0.001, at + length);
+  osc.connect(gain);
+  gain.connect(musicGain);
+  osc.start(at);
+  osc.stop(at + length);
+}
+
+// Browsers refuse to start audio outside a user gesture, so this is only ever
+// called from the pointer handler.
+// Tried once at load so the title tune starts on its own where the browser
+// allows it, and again from pointerdown for the browsers that insist on a
+// gesture. The catch matters: an unhandled rejection would log an error, and
+// the competition requires a clean console.
+function startAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = 0;
+    musicGain.connect(audioCtx.destination);
+    musicNext = audioCtx.currentTime;
+  }
+  if (audioCtx.state !== "running") {
+    const resumed = audioCtx.resume();
+    if (resumed && resumed.catch) resumed.catch(() => {});
+  }
+}
+
+// Ramp rather than jump, so starting and stopping never clicks.
+function musicFadeTo(level) {
+  if (!musicGain) return;
+  const now = audioCtx.currentTime;
+  musicGain.gain.cancelScheduledValues(now);
+  musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+  musicGain.gain.linearRampToValueAtTime(level, now + MUSIC_FADE);
+}
+
+function setMusicOn(on) {
+  musicOn = on;
+  musicFadeTo(on && musicTune ? MUSIC_VOLUME : 0);
+  try { localStorage.setItem("ktd:music", on ? "1" : "0"); } catch (e) {}
+}
+
+// Title tune on the menu, round tune while a wave runs, silence everywhere
+// else - so the music stops for the round popup and starts the next wave from
+// the top of the loop rather than resuming mid-phrase.
+function updateMusic() {
+  const wanted =
+    state.gameMode === "menu" ? TITLE_TUNE :
+    state.gameMode === "playing" ? ROUND_TUNE : null;
+
+  if (wanted !== musicWanted) {
+    musicWanted = wanted;
+
+    if (audioCtx && musicTune) {
+      // Something is sounding, so fade it out first and swap when it is gone.
+      musicFadeTo(0);
+      musicSwitchAt = audioCtx.currentTime + MUSIC_FADE;
+    } else {
+      // Nothing playing, so adopt straight away and fade up.
+      musicTune = wanted;
+      musicStep = 0;
+      if (audioCtx) {
+        musicNext = audioCtx.currentTime;
+        musicFadeTo(musicOn && wanted ? MUSIC_VOLUME : 0);
+      }
+    }
+  }
+
+  if (!audioCtx || audioCtx.state !== "running") return;
+
+  // Fade-out finished: take up the new tune from the top of its loop.
+  if (musicSwitchAt && audioCtx.currentTime >= musicSwitchAt) {
+    musicSwitchAt = 0;
+    musicTune = musicWanted;
+    musicStep = 0;
+    musicNext = audioCtx.currentTime;
+    musicFadeTo(musicOn && musicTune ? MUSIC_VOLUME : 0);
+  }
+
+  if (!musicTune) return;
+
+  while (musicNext < audioCtx.currentTime + MUSIC_LOOKAHEAD) {
+    const lead = musicTune.m[musicStep % musicTune.m.length];
+    if (lead !== ".") {
+      musicVoice(parseInt(lead, 16) + 12, "square", 0.11, musicTune.t * 1.7, musicNext);
+    }
+    const bass = musicTune.b[musicStep % musicTune.b.length];
+    if (bass !== ".") {
+      musicVoice(parseInt(bass, 16) - 12, "triangle", 0.17, musicTune.t * 2.2, musicNext);
+    }
+    musicStep++;
+    musicNext += musicTune.t;
+  }
+}
+
+// =========================
+// COOKIES
+// The Stress Eater detours to these instead of walking for the exit, which
+// buys the player time. Advanced Mode only, since that is where he spawns.
+// =========================
+const cookies = [];
+const COOKIE_COUNT = 6;
+const COOKIE_EAT_TIME = 1.6;   // seconds parked per cookie
+const COOKIE_RADIUS = 9;
+
+function spawnCookies() {
+  cookies.length = 0;
+  if (!state.advancedMode) return;
+
+  const candidates = [];
+  for (let cy = 0; cy < grid.rows; cy++) {
+    for (let cx = 0; cx < grid.cols; cx++) {
+      // Skip the spawn row so every cookie is an actual detour, and keep off
+      // blocked cells and the Happy Hangout.
+      if (cy === START.y) continue;
+      if (grid.blocked.has(cellKey(cx, cy))) continue;
+      if (doesCellOverlapRect(cx, cy, HAPPY_HANGOUT)) continue;
+      if (!findPath(START, { x: cx, y: cy })) continue;
+      candidates.push({ cx, cy });
+    }
+  }
+
+  for (let i = 0; i < COOKIE_COUNT && candidates.length; i++) {
+    const pick = candidates.splice((Math.random() * candidates.length) | 0, 1)[0];
+    cookies.push({
+      cx: pick.cx,
+      cy: pick.cy,
+      x: pick.cx * GRID_SIZE + 20,
+      y: pick.cy * GRID_SIZE + 20,
+      eaten: false
+    });
+  }
+}
+
+function cookieAtCell(cx, cy) {
+  return cookies.find(c => !c.eaten && c.cx === cx && c.cy === cy);
+}
+
+// Send a Stress Eater to the nearest cookie he can actually reach, or to the
+// exit once the plate is empty. Unreachable cookies are skipped rather than
+// leaving him with an empty path, which the mover would read as escaping.
+function retargetStressEater(grumpy) {
+  const startCell = getCell(grumpy.x, grumpy.y);
+  const from = { x: startCell.cx, y: startCell.cy };
+
+  const reachable = cookies
+    .filter(c => !c.eaten)
+    .map(c => ({ cookie: c, path: findPath(from, { x: c.cx, y: c.cy }) }))
+    .filter(entry => entry.path);
+
+  if (reachable.length) {
+    reachable.sort((a, b) => a.path.length - b.path.length);
+    grumpy.targetCookie = reachable[0].cookie;
+    grumpy.path = reachable[0].path;
+    grumpy.pathIndex = 0;
+    return;
+  }
+
+  grumpy.targetCookie = null;
+  const exitPath = findPath(from, END);
+  if (exitPath) {
+    grumpy.path = exitPath;
+    grumpy.pathIndex = 0;
+  }
+}
+
+// Five chips at four sizes, on a tan disc with a darker crescent along the
+// bottom for shading. Even sizes ringed evenly read as a shirt button, so the
+// sizes vary and the two tiny ones sit out at opposite corners. Positions are
+// checked so no pair overlaps, none shares a row or column, and every chip
+// stays clear of the shading. [x, y, radius], all as fractions of the cookie.
+const COOKIE_CHIPS = [
+  [-0.30, -0.22, 0.26],
+  [ 0.28,  0.04, 0.19],
+  [-0.08,  0.30, 0.14],
+  [ 0.34, -0.42, 0.10],
+  [-0.46,  0.24, 0.10]
+];
+
+// Tied eighth notes. When muted the notes dim and a white slash crosses them,
+// backed by a dark stroke so it stays visible over both the notes and the sky.
+function drawMusicToggle(ctx, box) {
+  const x = box.x;
+  const y = box.y;
+
+  ctx.fillStyle = "rgba(7, 16, 28, 0.45)";
+  ctx.fillRect(x, y, box.w, box.h);
+
+  const ink = musicOn ? "#ffffff" : "#b9c8e2";
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y + 26, 4.5, 3.4, -0.35, 0, Math.PI * 2);
+  ctx.ellipse(x + 24, y + 23, 4.5, 3.4, -0.35, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 14, y + 25.5);
+  ctx.lineTo(x + 14, y + 9);
+  ctx.moveTo(x + 28, y + 22.5);
+  ctx.lineTo(x + 28, y + 6);
+  ctx.stroke();
+
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x + 14, y + 9.5);
+  ctx.lineTo(x + 28, y + 6.5);
+  ctx.stroke();
+
+  if (!musicOn) {
+    ctx.strokeStyle = "#0b1630";
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 5, y + 31);
+    ctx.lineTo(x + 31, y + 5);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+}
+
+function drawCookie(ctx, x, y, r) {
+  // Darker base. What stays visible along the bottom is the shading.
+  ctx.fillStyle = "#a9682f";
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Lit face, sat high so the base shows underneath.
+  ctx.fillStyle = "#d79a55";
+  ctx.beginPath();
+  ctx.arc(x, y - r * 0.13, r * 0.86, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#4a2a12";
+  for (const [dx, dy, size] of COOKIE_CHIPS) {
+    ctx.beginPath();
+    ctx.arc(x + dx * r, y + dy * r, r * size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCookies(ctx) {
+  cookies.forEach(c => {
+    if (c.eaten) return;
+    drawCookie(ctx, c.x, c.y, COOKIE_RADIUS);
+  });
+}
+
+// =========================
+// BUDDIES
+// =========================
+const hugBuddies=[];
 const therapyDogs=[];
-const affirmTowers=[];
-const radioTowers=[];
+const affirmBuddies=[];
+const radioBuddies=[];
+const unicorns=[];
+
+// HappyHorn the Unicorn is a hero unit. Unlike the other buddies she never
+// stands on her cell: she flies a loop around whichever grumpy she is helping
+// and paints a rainbow behind her, and that rainbow keeps cheering grumpies up
+// for a moment after she has passed.
+const UNICORN_ORBIT_RADIUS = 34;
+const UNICORN_ORBIT_SPEED = 2.6;      // radians per second
+const UNICORN_SEEK_RANGE = 300;       // how far from her cell she looks for a grumpy
+const UNICORN_FLY_SPEED = 170;        // px per second she closes on her orbit point
+const UNICORN_SAD_RELIEF = 22;        // sad meter per second from the rainbow
+const RAINBOW_TOUCH_RADIUS = 16;
+const RAINBOW_LIFE = 1.1;             // seconds a rainbow segment lingers
+const RAINBOW_DROP_INTERVAL = 0.03;   // seconds between segments
+const RAINBOW_COLORS = ["#ff5d73","#ff9f45","#ffd93d","#7ee081","#4dc3ff","#b98cff"];
+
+const rainbowTrail = [];
+
+// Only one HappyHorn may be on the field at a time, which is what makes her a
+// hero rather than another buddy to spam.
+function canPlaceBuddy(buddyType) {
+  if (state.careCredits < buddyCosts[buddyType]) return false;
+  if (buddyType === "unicorn" && unicorns.length > 0) return false;
+  return true;
+}
 
 function markGrumpyHappy(grumpy) {
   if (grumpy.isHappy) return false;
@@ -683,7 +1216,7 @@ function markGrumpyHappy(grumpy) {
 // SYSTEMS
 // =========================
 function applyCareCredits(dt){
-  radioTowers.forEach(t=>{
+  radioBuddies.forEach(t=>{
     if (t.isGrumpy) return;
     state.grumpies.forEach(g=>{
       if(!g.active||g.isHappy) return;
@@ -699,7 +1232,7 @@ function applyCareCredits(dt){
 }
 
 function applyHugs(dt){
-  hugTowers.forEach(t=>{
+  hugBuddies.forEach(t=>{
     if (t.isGrumpy) {
       t.target = null;
       return;
@@ -760,17 +1293,22 @@ function applyTherapyDogs(dt){
   });
 }
 
+// No phrase here should read as encouragement to walk on: a grumpy reaching
+// the exit still sad is the lose condition. "keep going" cheered them toward
+// it, so it is gone.
 const affirmations=[
   "you're great",
   "you can do it",
   "i love you",
-  "keep going",
-  "you're valued"
+  "you're valued",
+  "you belong",
+  "stay a while",
+  "you matter"
 ];
 const textBubbles=[];
 
 function applyAffirmations(dt){
-  affirmTowers.forEach(t=>{
+  affirmBuddies.forEach(t=>{
     if (t.isGrumpy) {
       t.target = null;
       return;
@@ -824,20 +1362,149 @@ function applyAffirmations(dt){
   });
 }
 
+function findNearestSadGrumpy(x, y, range) {
+  let nearest = null;
+  let nearestDistance = range;
+
+  for (const grumpy of state.grumpies) {
+    if (!grumpy.active || grumpy.isHappy || grumpy.reachedEnd) continue;
+
+    const distance = Math.hypot(grumpy.x - x, grumpy.y - y);
+    if (distance < nearestDistance) {
+      nearest = grumpy;
+      nearestDistance = distance;
+    }
+  }
+
+  return nearest;
+}
+
+function cheerUpWithRainbow(grumpy, dt) {
+  grumpy.sad -= UNICORN_SAD_RELIEF * dt;
+  if (grumpy.sad <= 0) markGrumpyHappy(grumpy);
+}
+
+function applyHappyHorn(dt) {
+  // Grumpies already helped this frame. A grumpy can be both the one HappyHorn
+  // is circling and standing on her rainbow, and should only benefit once.
+  const helped = new Set();
+
+  unicorns.forEach(u => {
+    if (u.isGrumpy) {
+      u.target = null;
+      return;
+    }
+
+    // Stay with the same grumpy until they cheer up or leave, so she does not
+    // flicker between two equally close targets.
+    if (u.target && (!u.target.active || u.target.isHappy || u.target.reachedEnd)) {
+      u.target = null;
+    }
+
+    if (!u.target) {
+      u.target = findNearestSadGrumpy(u.homeX, u.homeY, UNICORN_SEEK_RANGE);
+    }
+
+    // With nobody to help she circles her own cell, so she is never still.
+    const centerX = u.target ? u.target.x : u.homeX;
+    const centerY = u.target ? u.target.y : u.homeY;
+
+    u.angle += UNICORN_ORBIT_SPEED * dt;
+
+    // The circle is squashed vertically so it reads as a loop on the ground
+    // rather than a flat ring.
+    const orbitX = centerX + Math.cos(u.angle) * UNICORN_ORBIT_RADIUS;
+    const orbitY = centerY + Math.sin(u.angle) * UNICORN_ORBIT_RADIUS * 0.6;
+
+    // Fly toward the orbit point instead of snapping to it, so switching
+    // targets looks like a flight path.
+    const dx = orbitX - u.x;
+    const dy = orbitY - u.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance > 1) {
+      const step = Math.min(UNICORN_FLY_SPEED * dt, distance);
+      u.x += (dx / distance) * step;
+      u.y += (dy / distance) * step;
+    }
+
+    u.dropTimer -= dt;
+    if (u.dropTimer <= 0) {
+      u.dropTimer = RAINBOW_DROP_INTERVAL;
+      u.colorIndex = (u.colorIndex + 1) % RAINBOW_COLORS.length;
+      rainbowTrail.push({
+        x: u.x,
+        y: u.y,
+        c: RAINBOW_COLORS[u.colorIndex],
+        life: RAINBOW_LIFE
+      });
+    }
+
+    // The grumpy she is circling sits inside the loop, so the trail itself
+    // sweeps around them rather than over them. She tends to them directly
+    // instead of waiting for the rainbow to catch them by accident.
+    if (u.target && !helped.has(u.target)) {
+      helped.add(u.target);
+      cheerUpWithRainbow(u.target, dt);
+      if (u.target.isHappy) u.target = null;
+    }
+  });
+
+  updateRainbowTrail(dt, helped);
+}
+
+function updateRainbowTrail(dt, helped) {
+  for (let i = rainbowTrail.length - 1; i >= 0; i--) {
+    rainbowTrail[i].life -= dt;
+    if (rainbowTrail[i].life <= 0) rainbowTrail.splice(i, 1);
+  }
+
+  if (!rainbowTrail.length) return;
+
+  // Relief is applied once per grumpy per frame. Charging it per segment would
+  // make the rainbow's strength depend on how densely it happens to be drawn.
+  state.grumpies.forEach(grumpy => {
+    if (!grumpy.active || grumpy.isHappy || grumpy.reachedEnd) return;
+    if (helped.has(grumpy)) return;
+
+    const touching = rainbowTrail.some(
+      segment =>
+        Math.hypot(grumpy.x - segment.x, grumpy.y - segment.y) < RAINBOW_TOUCH_RADIUS
+    );
+
+    if (!touching) return;
+
+    cheerUpWithRainbow(grumpy, dt);
+  });
+}
+
+// He used to sour anything within 90px, taking a full 5 seconds about it, which
+// meant he mostly drifted past doing nothing. Now it is contact range and half
+// a second, so walking him into your crew wrecks it - and placement off his
+// route is the counter-play.
+const NEIL_TOUCH_RANGE = 34;      // his radius plus a buddy's: actual contact
+const NEIL_DISABLE_TIME = 0.5;    // seconds of contact to sour a buddy
+const NEIL_RECOVER_TIME = 2;      // seconds to shake it off once he has moved on
+
 function applyNegativeNeil(dt) {
   state.grumpies.forEach(grumpy => {
     if (!grumpy.active || grumpy.isHappy || grumpy.name !== "Negative Neil") return;
 
-    forEachTower(tower => {
-      const distance = Math.hypot(grumpy.x - tower.x, grumpy.y - tower.y);
+    forEachBuddy((buddy, kind) => {
+      // HappyHorn is the one he cannot sour. Without this she is actively bad
+      // against him: she orbits her target at 34px, well inside his 90px
+      // aura, so she would fly in and be disabled within about five seconds.
+      if (kind === "unicorn") return;
 
-      if (distance < 90) {
-        tower.grumpiness = Math.min(1, (tower.grumpiness || 0) + dt * 0.2);
-      } else if (!tower.isGrumpy) {
-        tower.grumpiness = Math.max(0, (tower.grumpiness || 0) - dt * 0.06);
+      const distance = Math.hypot(grumpy.x - buddy.x, grumpy.y - buddy.y);
+
+      if (distance < NEIL_TOUCH_RANGE) {
+        buddy.grumpiness = Math.min(1, (buddy.grumpiness || 0) + dt / NEIL_DISABLE_TIME);
+      } else if (!buddy.isGrumpy) {
+        buddy.grumpiness = Math.max(0, (buddy.grumpiness || 0) - dt / NEIL_RECOVER_TIME);
       }
 
-      tower.isGrumpy = (tower.grumpiness || 0) >= 1;
+      buddy.isGrumpy = (buddy.grumpiness || 0) >= 1;
     });
   });
 }
@@ -880,7 +1547,7 @@ function updateTextBubbles(dt){
 // =========================
 let mouse={x:0,y:0};
 let preview={cx:0,cy:0,valid:true};
-let selectedTower="hug";
+let selectedBuddy="hug";
 const prefersCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
 const placementMenu = {
   active: false,
@@ -898,23 +1565,37 @@ function getPlacementMenuButtons(cx, cy) {
   const width = prefersCoarsePointer ? 140 : 116;
   const height = prefersCoarsePointer ? 40 : 28;
 
-  return buildMenuButtons.map(button => {
-    let x = centerX - width / 2;
-    let y = centerY - height / 2;
+  const rows = Math.ceil(buildMenuButtons.length / BUILD_MENU_COLS);
+  const blockWidth = BUILD_MENU_COLS * width + (BUILD_MENU_COLS - 1) * BUILD_MENU_GAP;
+  const blockHeight = rows * height + (rows - 1) * BUILD_MENU_GAP;
 
-    if (button.direction === "up") y = centerY - GRID_SIZE - height - 4;
-    if (button.direction === "down") y = centerY + GRID_SIZE + 4;
-    if (button.direction === "left") x = centerX - GRID_SIZE - width - 4;
-    if (button.direction === "right") x = centerX + GRID_SIZE + 4;
+  // The menu sits beside the selected cell so the placement preview underneath
+  // stays visible. Clamping the block as a whole, rather than each button on
+  // its own, is what keeps buttons off each other near an edge: a button's
+  // position is a fixed offset inside the block. The old per-direction layout
+  // could not fit a fifth button, because each button is far wider than the
+  // 40px cell and so any diagonal overlapped a cardinal one.
+  const gapFromCell = GRID_SIZE / 2 + BUILD_MENU_GAP;
+  const fitsOnRight = centerX + gapFromCell + blockWidth + 4 <= canvas.width;
 
-    return {
-      ...button,
-      x: clamp(x, 4, canvas.width - width - 4),
-      y: clamp(y, 4, canvas.height - height - 4),
-      w: width,
-      h: height
-    };
-  });
+  const blockX = clamp(
+    fitsOnRight ? centerX + gapFromCell : centerX - gapFromCell - blockWidth,
+    4,
+    canvas.width - blockWidth - 4
+  );
+  const blockY = clamp(
+    centerY - blockHeight / 2,
+    BUILD_MENU_TOP,
+    canvas.height - blockHeight - 4
+  );
+
+  return buildMenuButtons.map((button, index) => ({
+    ...button,
+    x: blockX + (index % BUILD_MENU_COLS) * (width + BUILD_MENU_GAP),
+    y: blockY + Math.floor(index / BUILD_MENU_COLS) * (height + BUILD_MENU_GAP),
+    w: width,
+    h: height
+  }));
 }
 
 function getPlacementMenuButtonAt(x, y) {
@@ -986,8 +1667,9 @@ function updatePreviewAtCell(cx, cy) {
   const isInsideGrid = cx >= 0 && cy >= 0 && cx < grid.cols && cy < grid.rows;
   const isSpawnCell = cx === START.x && cy === START.y;
   const isHappyHangoutCell = doesCellOverlapRect(cx, cy, HAPPY_HANGOUT);
+  const isCookieCell = !!cookieAtCell(cx, cy);
 
-  if (!isInsideGrid || isSpawnCell || isHappyHangoutCell || grid.blocked.has(key)) {
+  if (!isInsideGrid || isSpawnCell || isHappyHangoutCell || isCookieCell || grid.blocked.has(key)) {
     preview.valid = false;
     return;
   }
@@ -1005,6 +1687,11 @@ if (state.gameMode === "menu") {
       if (pointInRect(x, y, creditsCloseButton)) {
         state.menuCreditsOpen = false;
       }
+      return;
+    }
+
+    if (pointInRect(x, y, musicToggleButton)) {
+      setMusicOn(!musicOn);
       return;
     }
 
@@ -1040,6 +1727,11 @@ if (state.gameMode === "menu") {
 
     if (click && pointInRect(x, y, pauseMenuButton)) {
       returnToMainMenu();
+      return;
+    }
+
+    if (click && pointInRect(x, y, pauseMusicButton)) {
+      setMusicOn(!musicOn);
     }
     return;
   }
@@ -1065,9 +1757,9 @@ if (state.gameMode === "menu") {
 
     const menuButton = getPlacementMenuButtonAt(x, y);
     if (menuButton) {
-      if (click && state.careCredits >= towerCosts[menuButton.towerType]) {
-        selectedTower = menuButton.towerType;
-        placeTower(placementMenu.cx, placementMenu.cy, menuButton.towerType);
+      if (click && canPlaceBuddy(menuButton.buddyType)) {
+        selectedBuddy = menuButton.buddyType;
+        placeBuddy(placementMenu.cx, placementMenu.cy, menuButton.buddyType);
         placementMenu.active = false;
       }
       return;
@@ -1089,27 +1781,41 @@ if (state.gameMode === "menu") {
   }
 }
 
-function placeTower(cx,cy,towerType=selectedTower){
-  const cost=towerCosts[towerType];
-  if(state.careCredits<cost) return;
+function placeBuddy(cx,cy,buddyType=selectedBuddy,free=false){
+  // `free` skips the cost only. The one-hero rule still applies, so the
+  // Advanced-Mode gift cannot be stacked with a bought HappyHorn.
+  if(free ? (buddyType === "unicorn" && unicorns.length > 0) : !canPlaceBuddy(buddyType)) return;
   if (doesCellOverlapRect(cx, cy, HAPPY_HANGOUT)) return;
+  // Would hide the cookie and can wall it off from the Stress Eater. The
+  // preview already refuses these cells; this is the same guard as the
+  // Happy Hangout one above, so the rule holds however placeBuddy is reached.
+  if (cookieAtCell(cx, cy)) return;
 
-  state.careCredits-=cost;
+  if(!free) state.careCredits-=buddyCosts[buddyType];
 
   const x=cx*GRID_SIZE+20;
   const y=cy*GRID_SIZE+20;
 
-  const baseTower = {
+  const baseBuddy = {
     x,
     y,
     grumpiness: 0,
     isGrumpy: false
   };
 
-  if(towerType==="hug") hugTowers.push({...baseTower, range:52, target:null});
-  if(towerType==="dog") therapyDogs.push({...baseTower, speed:60, range:120, targets:[]});
-  if(towerType==="affirm") affirmTowers.push({...baseTower, range:140, target:null, cooldown:0});
-  if(towerType==="radio") radioTowers.push({...baseTower, radius:120});
+  if(buddyType==="hug") hugBuddies.push({...baseBuddy, range:52, target:null});
+  if(buddyType==="dog") therapyDogs.push({...baseBuddy, speed:60, range:120, targets:[]});
+  if(buddyType==="affirm") affirmBuddies.push({...baseBuddy, range:140, target:null, cooldown:0});
+  if(buddyType==="radio") radioBuddies.push({...baseBuddy, radius:120});
+  if(buddyType==="unicorn") unicorns.push({
+    ...baseBuddy,
+    homeX: x,
+    homeY: y,
+    angle: 0,
+    dropTimer: 0,
+    colorIndex: 0,
+    target: null
+  });
 
   grid.blocked.add(cellKey(cx,cy));
   refreshGrumpyPaths();
@@ -1122,24 +1828,35 @@ canvas.addEventListener("pointermove", e => {
   }
 });
 
+// Any interaction anywhere unlocks audio, not just a tap on the playfield - the
+// Full Screen button and the number-key shortcuts count too. startAudio() is
+// idempotent, so re-firing costs nothing.
+addEventListener("pointerdown", startAudio, { passive: true });
+addEventListener("keydown", startAudio, { passive: true });
+
 canvas.addEventListener("pointerdown", e => {
   e.preventDefault();
+  startAudio();
   const point = getCanvasPoint(e.clientX, e.clientY);
   handleInput(point.x, point.y, true);
 });
 
 window.addEventListener('keydown', e=>{
-  if (e.key==='1') selectedTower='hug';
-  if (e.key==='2') selectedTower='dog';
-  if (e.key==='3') selectedTower='affirm';
-  if (e.key==='4') selectedTower='radio';
+  if (e.key==='1') selectedBuddy='hug';
+  if (e.key==='2') selectedBuddy='dog';
+  if (e.key==='3') selectedBuddy='affirm';
+  if (e.key==='4') selectedBuddy='radio';
+  if (e.key==='5') selectedBuddy='unicorn';
 });
 
 // =========================
 // LOOP
 // =========================
 function loop(t){
-  const dt=(t-last)/1000;
+  // Clamp the step. A backgrounded tab throttles requestAnimationFrame, and an
+  // unclamped dt would teleport grumpies past buddies the moment the game comes
+  // back into view (and the first frame's dt is the whole page lifetime).
+  const dt=Math.min((t-last)/1000,1/30);
   last=t;
 
   update(dt);
@@ -1149,6 +1866,8 @@ function loop(t){
 }
 
 function update(dt){
+  updateMusic();
+
   if(state.gameMode==="menu"){
     updateMenuGrumpies(dt);
     return;
@@ -1165,6 +1884,7 @@ function update(dt){
   applyHugs(dt);
   applyTherapyDogs(dt);
   applyAffirmations(dt);
+  applyHappyHorn(dt);
   applyNegativeNeil(dt);
   updateTextBubbles(dt);
 
@@ -1190,9 +1910,6 @@ function update(dt){
     }
   }
 
-  if(state.waveTextTimer>0){
-    state.waveTextTimer-=dt;
-  }
 }
 
 function drawPixelArt(ctx, x, y, pixels, size=4) {
@@ -1220,22 +1937,36 @@ function drawPixelArtWithBounce(ctx, x, y, pixels, size=4, tOffset=0, amp=2, spe
   });
 }
 
-function drawTowerSpriteCentered(ctx, centerX, centerY, pixels, size, tOffset, amp, speed) {
-  const topLeftX = centerX - (TOWER_PIXEL_DIM * size) / 2;
-  const topLeftY = centerY - (TOWER_PIXEL_DIM * size) / 2;
+function drawBuddySpriteCentered(ctx, centerX, centerY, pixels, size, tOffset, amp, speed) {
+  const topLeftX = centerX - (BUDDY_PIXEL_DIM * size) / 2;
+  const topLeftY = centerY - (BUDDY_PIXEL_DIM * size) / 2;
   drawPixelArtWithBounce(ctx, topLeftX, topLeftY, pixels, size, tOffset, amp, speed);
 }
 
-function drawTowerGrumpiness(ctx, tower) {
+function drawRainbowTrail(ctx) {
+  rainbowTrail.forEach(segment => {
+    const fade = segment.life / RAINBOW_LIFE;
+
+    ctx.globalAlpha = fade * 0.7;
+    ctx.fillStyle = segment.c;
+    ctx.beginPath();
+    ctx.arc(segment.x, segment.y, 3 + fade * 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.globalAlpha = 1;
+}
+
+function drawBuddyGrumpiness(ctx, buddy) {
   ctx.fillStyle = "rgba(40, 20, 30, 0.5)";
   ctx.beginPath();
-  ctx.arc(tower.x, tower.y, 12, 0, Math.PI * 2);
+  ctx.arc(buddy.x, buddy.y, 12, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = "#2b1f1a";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(tower.x, tower.y + 3, 5, 1.15 * Math.PI, 1.85 * Math.PI);
+  ctx.arc(buddy.x, buddy.y + 3, 5, 1.15 * Math.PI, 1.85 * Math.PI);
   ctx.stroke();
 }
 
@@ -1291,10 +2022,13 @@ function draw(){
     ctx.arc(645,72,22,0,Math.PI*2);
     ctx.fill();
 
-    drawTowerSpriteCentered(ctx, 135, 215, towerPixelArt.hug, 6, 0.2, 2, 0.004);
-    drawTowerSpriteCentered(ctx, 290, 212, towerPixelArt.dog, 6, 1.0, 2, 0.005);
-    drawTowerSpriteCentered(ctx, 470, 218, towerPixelArt.affirm, 6, 1.8, 2, 0.0045);
-    drawTowerSpriteCentered(ctx, 640, 214, towerPixelArt.radio, 6, 2.6, 2, 0.0055);
+    // HappyHorn takes the centre spot as the theme hero; the megaphone moves
+    // out to the far right.
+    drawBuddySpriteCentered(ctx, 105, 215, buddyPixelArt.hug, 6, 0.2, 2, 0.004);
+    drawBuddySpriteCentered(ctx, 245, 212, buddyPixelArt.dog, 6, 1.0, 2, 0.005);
+    drawBuddySpriteCentered(ctx, 390, 212, buddyPixelArt.unicorn, 6, 3.4, 3, 0.007);
+    drawBuddySpriteCentered(ctx, 535, 214, buddyPixelArt.radio, 6, 2.6, 2, 0.0055);
+    drawBuddySpriteCentered(ctx, 678, 218, buddyPixelArt.affirm, 6, 1.8, 2, 0.0045);
 
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.lineWidth = 18;
@@ -1361,6 +2095,8 @@ function draw(){
     ctx.font="18px sans-serif";
     ctx.fillText("Credits", canvas.width / 2, creditsButton.y + 26);
 
+    drawMusicToggle(ctx, musicToggleButton);
+
     if (state.menuCreditsOpen) {
       ctx.fillStyle = "rgba(7, 16, 28, 0.76)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1380,7 +2116,7 @@ function draw(){
       ctx.fillStyle = "#ffd7e8";
       wrapText(
         ctx,
-        "This game was made by EricOP, Asa, Thea, and Codex. Codex was our hard working robotic partner.",
+        "This game was made by EricOP, Asa, and Thea. Codex and Claude were our hard-working robotic partners.",
         canvas.width / 2,
         138,
         270,
@@ -1447,6 +2183,21 @@ function draw(){
       26
     );
 
+    if (page.buddyIcon) {
+      // Sits higher than the grumpy icons because a 10x10 buddy sprite at this
+      // scale is taller and would otherwise run into the page counter.
+      drawBuddySpriteCentered(
+        ctx,
+        canvas.width / 2,
+        224,
+        buddyPixelArt[page.buddyIcon],
+        5,
+        0,
+        3,
+        0.008
+      );
+    }
+
     if (page.icon) {
       drawGrumpySprite(
         ctx,
@@ -1461,7 +2212,9 @@ function draw(){
           hasDogAllergy: !!page.icon.hasDogAllergy,
           avoidsHugs: !!page.icon.avoidsHugs,
           isBoss: !!page.icon.isBoss,
-          scale: page.icon.isBoss ? 1.5 : 1,
+          isStressEater: !!page.icon.isStressEater,
+          eatTimer: 0,
+          scale: page.icon.isBoss ? 1.5 : page.icon.isStressEater ? 1.25 : 1,
           name: page.icon.isBoss ? (page.icon.bossName || "Negative Neil") : ""
         },
         false
@@ -1505,18 +2258,43 @@ function draw(){
   }
 
   if(state.gameMode==="gameover"){
+    // Beating Advanced is the end of the whole game, so it gets its own layout
+    // with room for the verse rather than the one-line sign-off.
+    const advancedWin = state.win && state.advancedMode;
+
     ctx.fillStyle="black";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     ctx.fillStyle="white";
     ctx.font="32px sans-serif";
     ctx.textAlign="center";
+    ctx.textBaseline="alphabetic";
     ctx.fillText(
       state.win?"You spread kindness!":"You have lost!",
-      canvas.width/2,162
+      canvas.width/2, advancedWin ? 84 : 162
     );
 
-    if (state.win) {
+    if (advancedWin) {
+      ctx.font = "19px sans-serif";
+      ctx.fillStyle = "#ffd7e8";
+      wrapText(
+        ctx,
+        "Wow, You Did Great! Now go out and show kindness in real life!",
+        canvas.width / 2, 130, 560, 25
+      );
+
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#e7eefc";
+      wrapText(
+        ctx,
+        "\u201cBe kind and compassionate to one another, forgiving each other, just as in Christ God forgave you.\u201d",
+        canvas.width / 2, 200, 560, 23
+      );
+
+      ctx.font = "14px sans-serif";
+      ctx.fillStyle = "#a9b8d4";
+      ctx.fillText("Ephesians 4:32", canvas.width / 2, 268);
+    } else if (state.win) {
       ctx.font = "18px sans-serif";
       ctx.fillStyle = "#ffd7e8";
       wrapText(
@@ -1533,7 +2311,7 @@ function draw(){
 
     ctx.fillStyle = "white";
     ctx.font="20px sans-serif";
-    ctx.fillText("Tap to return to menu",canvas.width/2,290);
+    ctx.fillText("Tap to return to menu", canvas.width/2, advancedWin ? 322 : 290);
     return;
   }
 
@@ -1566,15 +2344,18 @@ function draw(){
     HAPPY_HANGOUT.y + HAPPY_HANGOUT.height / 2
   );
 
-  // hugTowers.forEach(t=>{
+  // hugBuddies.forEach(t=>{
   //   ctx.fillStyle='brown';
   //   ctx.beginPath();
   //   ctx.arc(t.x,t.y,12,0,Math.PI*2);
   //   ctx.fill();
   // });
-  hugTowers.forEach((t,i)=>{
-    drawTowerSpriteCentered(ctx, t.x, t.y, towerPixelArt.hug, 4, i*0.5, 2, 0.006);
-    if (t.isGrumpy) drawTowerGrumpiness(ctx, t);
+  drawCookies(ctx);
+  drawRainbowTrail(ctx);
+
+  hugBuddies.forEach((t,i)=>{
+    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.hug, 4, i*0.5, 2, 0.006);
+    if (t.isGrumpy) drawBuddyGrumpiness(ctx, t);
   });
 
   // therapyDogs.forEach(d=>{
@@ -1584,22 +2365,22 @@ function draw(){
   //   ctx.fill();
   // });
   therapyDogs.forEach((d,i)=>{
-    drawTowerSpriteCentered(ctx, d.x, d.y, towerPixelArt.dog, 4, i*0.3, 1.5, 0.007);
-    if (d.isGrumpy) drawTowerGrumpiness(ctx, d);
+    drawBuddySpriteCentered(ctx, d.x, d.y, buddyPixelArt.dog, 4, i*0.3, 1.5, 0.007);
+    if (d.isGrumpy) drawBuddyGrumpiness(ctx, d);
   });
 
-  // affirmTowers.forEach(t=>{
+  // affirmBuddies.forEach(t=>{
   //   ctx.fillStyle='purple';
   //   ctx.beginPath();
   //   ctx.arc(t.x,t.y,10,0,Math.PI*2);
   //   ctx.fill();
   // });
-  affirmTowers.forEach((t,i)=>{
-    drawTowerSpriteCentered(ctx, t.x, t.y, towerPixelArt.affirm, 4, i*0.2, 1.8, 0.008);
-    if (t.isGrumpy) drawTowerGrumpiness(ctx, t);
+  affirmBuddies.forEach((t,i)=>{
+    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.affirm, 4, i*0.2, 1.8, 0.008);
+    if (t.isGrumpy) drawBuddyGrumpiness(ctx, t);
   });
 
-  // radioTowers.forEach(t=>{
+  // radioBuddies.forEach(t=>{
   //   ctx.strokeStyle='cyan';
   //   ctx.beginPath();
   //   ctx.arc(t.x,t.y,t.radius,0,Math.PI*2);
@@ -1610,14 +2391,25 @@ function draw(){
   //   ctx.arc(t.x,t.y,10,0,Math.PI*2);
   //   ctx.fill();
   // });
-  radioTowers.forEach((t,i)=>{
+  radioBuddies.forEach((t,i)=>{
     ctx.strokeStyle='rgba(0,255,255,0.3)';
     ctx.beginPath();
     ctx.arc(t.x,t.y,t.radius,0,Math.PI*2);
     ctx.stroke();
 
-    drawTowerSpriteCentered(ctx, t.x, t.y, towerPixelArt.radio, 4, i*0.4, 2.5, 0.005);
-    if (t.isGrumpy) drawTowerGrumpiness(ctx, t);
+    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.radio, 4, i*0.4, 2.5, 0.005);
+    if (t.isGrumpy) drawBuddyGrumpiness(ctx, t);
+  });
+
+  unicorns.forEach((u,i)=>{
+    // Mark her home cell faintly so the player can still see the tile she
+    // occupies while she is off circling a grumpy.
+    ctx.strokeStyle = "rgba(185,140,255,0.35)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(u.homeX - 18, u.homeY - 18, 36, 36);
+
+    drawBuddySpriteCentered(ctx, u.x, u.y, buddyPixelArt.unicorn, 4, i*0.6, 2.5, 0.009);
+    if (u.isGrumpy) drawBuddyGrumpiness(ctx, u);
   });
 
   state.grumpies.forEach(g=>{
@@ -1689,7 +2481,7 @@ function draw(){
     );
 
     for (const button of buttons) {
-      const canAfford = state.careCredits >= towerCosts[button.towerType];
+      const canBuild = canPlaceBuddy(button.buddyType);
 
       ctx.fillStyle = "#243b55";
       ctx.fillRect(button.x, button.y, button.w, button.h);
@@ -1698,12 +2490,12 @@ function draw(){
       ctx.lineWidth = 2;
       ctx.strokeRect(button.x, button.y, button.w, button.h);
 
-      ctx.fillStyle = canAfford ? "#ffffff" : "#8a8a8a";
+      ctx.fillStyle = canBuild ? "#ffffff" : "#8a8a8a";
       ctx.font = "12px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(
-        `${button.label} (${towerCosts[button.towerType]})`,
+        `${button.label} (${buddyCosts[button.buddyType]})`,
         button.x + button.w / 2,
         button.y + button.h / 2
       );
@@ -1712,48 +2504,25 @@ function draw(){
 
 
 
-  if(state.waveTextTimer>0){
-    const currentRoundHpBonus = Math.max(0, state.currentRound - 1);
-    ctx.font="24px sans-serif";
-    ctx.textAlign="center";
-    ctx.fillText(
-      `Round ${state.currentRound}: ${state.totalSpawned} Grumpies Incoming!`,
-      canvas.width/2,60
-    );
-    ctx.font = "16px sans-serif";
-    ctx.fillText(
-      `This round beefs grumpies up by +${currentRoundHpBonus} sad meter`,
-      canvas.width / 2,
-      86
-    );
-    if (state.currentRound < state.totalRounds) {
-      ctx.fillText(
-        `Next round adds +${ROUND_SPAWN_INCREASE} grumpies and +1 sad meter`,
-        canvas.width / 2,
-        108
-      );
-    }
-  }
-
   if (state.gameMode === "paused") {
     ctx.fillStyle = "rgba(7, 16, 28, 0.72)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "#15263f";
-    ctx.fillRect(canvas.width / 2 - 150, 118, 300, 196);
+    ctx.fillRect(canvas.width / 2 - 150, 100, 300, 250);
     ctx.strokeStyle = "#f0f6ff";
     ctx.lineWidth = 2;
-    ctx.strokeRect(canvas.width / 2 - 150, 118, 300, 196);
+    ctx.strokeRect(canvas.width / 2 - 150, 100, 300, 250);
 
     ctx.fillStyle = "white";
     ctx.font = "bold 28px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText("Paused", canvas.width / 2, 138);
+    ctx.fillText("Paused", canvas.width / 2, 120);
 
     ctx.font = "15px sans-serif";
     ctx.fillStyle = "#d9e7ff";
-    ctx.fillText(`Round ${state.pausedFromRound} is waiting for you`, canvas.width / 2, 172);
+    ctx.fillText(`Round ${state.pausedFromRound} is waiting for you`, canvas.width / 2, 154);
 
     ctx.fillStyle = "#2e8b57";
     ctx.fillRect(
@@ -1798,7 +2567,29 @@ function draw(){
       pauseMenuButton.x + pauseMenuButton.w / 2,
       pauseMenuButton.y + pauseMenuButton.h / 2
     );
+
+    ctx.fillStyle = musicOn ? "#2f6a4a" : "#4a3350";
+    ctx.fillRect(
+      pauseMusicButton.x,
+      pauseMusicButton.y,
+      pauseMusicButton.w,
+      pauseMusicButton.h
+    );
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(
+      pauseMusicButton.x,
+      pauseMusicButton.y,
+      pauseMusicButton.w,
+      pauseMusicButton.h
+    );
+    ctx.fillStyle = "white";
+    ctx.fillText(
+      musicOn ? "Music: On" : "Music: Off",
+      pauseMusicButton.x + pauseMusicButton.w / 2,
+      pauseMusicButton.y + pauseMusicButton.h / 2
+    );
   }
 }
 
+startAudio();
 requestAnimationFrame(loop);

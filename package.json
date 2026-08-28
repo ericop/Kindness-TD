@@ -1,0 +1,24 @@
+{
+  "name": "kindness-td",
+  "version": "1.0.0",
+  "description": "Kindness TD - a non-violent tower defense game for js13kGames 2026 (theme: Unicorns and Rainbows)",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "serve": "node tools/serve.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ericop/Kindness-TD.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/ericop/Kindness-TD/issues"
+  },
+  "homepage": "https://github.com/ericop/Kindness-TD#readme",
+  "devDependencies": {
+    "html-minifier-terser": "^7.2.0",
+    "terser": "^5.51.2"
+  },
+  "private": true
+}
