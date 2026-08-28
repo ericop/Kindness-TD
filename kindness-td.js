@@ -356,6 +356,12 @@ const creditsButton = {
   w: 170,
   h: 40
 };
+const musicToggleButton = {
+  x: canvas.width - 46,
+  y: 10,
+  w: 36,
+  h: 36
+};
 const creditsCloseButton = {
   x: canvas.width / 2 - 90,
   y: canvas.height - 74,
@@ -876,6 +882,7 @@ function createGrumpy(delay=0, options = {}){
 const MUSIC_ROOT = 220;
 const MUSIC_LOOKAHEAD = 0.25;   // seconds of notes queued in advance
 const MUSIC_VOLUME = 0.4;
+const MUSIC_FADE = 0.5;         // seconds to fade out and back in
 
 // Sunny Skip, while a wave is running.
 const ROUND_TUNE = {
@@ -893,7 +900,9 @@ const TITLE_TUNE = {
 
 let audioCtx = null;
 let musicGain;
-let musicTune = null;
+let musicTune = null;           // what is sounding right now
+let musicWanted = null;         // what the current game mode asks for
+let musicSwitchAt = 0;          // when the fade-out finishes and we swap
 let musicStep = 0;
 let musicNext = 0;
 let musicOn = true;
@@ -917,20 +926,36 @@ function musicVoice(semi, type, volume, length, at) {
 
 // Browsers refuse to start audio outside a user gesture, so this is only ever
 // called from the pointer handler.
+// Tried once at load so the title tune starts on its own where the browser
+// allows it, and again from pointerdown for the browsers that insist on a
+// gesture. The catch matters: an unhandled rejection would log an error, and
+// the competition requires a clean console.
 function startAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     musicGain = audioCtx.createGain();
-    musicGain.gain.value = musicOn ? MUSIC_VOLUME : 0;
+    musicGain.gain.value = 0;
     musicGain.connect(audioCtx.destination);
     musicNext = audioCtx.currentTime;
   }
-  if (audioCtx.state !== "running") audioCtx.resume();
+  if (audioCtx.state !== "running") {
+    const resumed = audioCtx.resume();
+    if (resumed && resumed.catch) resumed.catch(() => {});
+  }
+}
+
+// Ramp rather than jump, so starting and stopping never clicks.
+function musicFadeTo(level) {
+  if (!musicGain) return;
+  const now = audioCtx.currentTime;
+  musicGain.gain.cancelScheduledValues(now);
+  musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+  musicGain.gain.linearRampToValueAtTime(level, now + MUSIC_FADE);
 }
 
 function setMusicOn(on) {
   musicOn = on;
-  if (musicGain) musicGain.gain.value = on ? MUSIC_VOLUME : 0;
+  musicFadeTo(on && musicTune ? MUSIC_VOLUME : 0);
   try { localStorage.setItem("ktd:music", on ? "1" : "0"); } catch (e) {}
 }
 
@@ -942,13 +967,36 @@ function updateMusic() {
     state.gameMode === "menu" ? TITLE_TUNE :
     state.gameMode === "playing" ? ROUND_TUNE : null;
 
-  if (wanted !== musicTune) {
-    musicTune = wanted;
-    musicStep = 0;
-    if (audioCtx) musicNext = audioCtx.currentTime + 0.08;
+  if (wanted !== musicWanted) {
+    musicWanted = wanted;
+
+    if (audioCtx && musicTune) {
+      // Something is sounding, so fade it out first and swap when it is gone.
+      musicFadeTo(0);
+      musicSwitchAt = audioCtx.currentTime + MUSIC_FADE;
+    } else {
+      // Nothing playing, so adopt straight away and fade up.
+      musicTune = wanted;
+      musicStep = 0;
+      if (audioCtx) {
+        musicNext = audioCtx.currentTime;
+        musicFadeTo(musicOn && wanted ? MUSIC_VOLUME : 0);
+      }
+    }
   }
 
-  if (!musicTune || !audioCtx || audioCtx.state !== "running") return;
+  if (!audioCtx || audioCtx.state !== "running") return;
+
+  // Fade-out finished: take up the new tune from the top of its loop.
+  if (musicSwitchAt && audioCtx.currentTime >= musicSwitchAt) {
+    musicSwitchAt = 0;
+    musicTune = musicWanted;
+    musicStep = 0;
+    musicNext = audioCtx.currentTime;
+    musicFadeTo(musicOn && musicTune ? MUSIC_VOLUME : 0);
+  }
+
+  if (!musicTune) return;
 
   while (musicNext < audioCtx.currentTime + MUSIC_LOOKAHEAD) {
     const lead = musicTune.m[musicStep % musicTune.m.length];
@@ -1047,6 +1095,52 @@ const COOKIE_CHIPS = [
   [ 0.34, -0.42, 0.10],
   [-0.46,  0.24, 0.10]
 ];
+
+// Tied eighth notes. When muted the notes dim and a white slash crosses them,
+// backed by a dark stroke so it stays visible over both the notes and the sky.
+function drawMusicToggle(ctx, box) {
+  const x = box.x;
+  const y = box.y;
+
+  ctx.fillStyle = "rgba(7, 16, 28, 0.45)";
+  ctx.fillRect(x, y, box.w, box.h);
+
+  const ink = musicOn ? "#ffffff" : "#b9c8e2";
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y + 26, 4.5, 3.4, -0.35, 0, Math.PI * 2);
+  ctx.ellipse(x + 24, y + 23, 4.5, 3.4, -0.35, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 14, y + 25.5);
+  ctx.lineTo(x + 14, y + 9);
+  ctx.moveTo(x + 28, y + 22.5);
+  ctx.lineTo(x + 28, y + 6);
+  ctx.stroke();
+
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x + 14, y + 9.5);
+  ctx.lineTo(x + 28, y + 6.5);
+  ctx.stroke();
+
+  if (!musicOn) {
+    ctx.strokeStyle = "#0b1630";
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 5, y + 31);
+    ctx.lineTo(x + 31, y + 5);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+}
 
 function drawCookie(ctx, x, y, r) {
   // Darker base. What stays visible along the bottom is the shading.
@@ -1596,6 +1690,11 @@ if (state.gameMode === "menu") {
       return;
     }
 
+    if (pointInRect(x, y, musicToggleButton)) {
+      setMusicOn(!musicOn);
+      return;
+    }
+
     if (pointInRect(x, y, startButton)) {
       startGame(false);
       return;
@@ -1989,6 +2088,8 @@ function draw(){
 
     ctx.font="18px sans-serif";
     ctx.fillText("Credits", canvas.width / 2, creditsButton.y + 26);
+
+    drawMusicToggle(ctx, musicToggleButton);
 
     if (state.menuCreditsOpen) {
       ctx.fillStyle = "rgba(7, 16, 28, 0.76)";
@@ -2484,4 +2585,5 @@ function draw(){
   }
 }
 
+startAudio();
 requestAnimationFrame(loop);

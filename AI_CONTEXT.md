@@ -219,10 +219,19 @@ semitone offsets from A3 in a 32-character string; `.` is a rest.
 Each round starts its loop from step 0 rather than resuming mid-phrase, so the
 music lines up with the wave.
 
-Audio can only start inside a user gesture, so `startAudio()` is called from the
-`pointerdown` handler and nowhere else. The on/off toggle lives on the pause
-screen and saves to `localStorage` under `ktd:music` - namespaced because js13k
-games share one origin - wrapped in try/catch since private browsing throws.
+Transitions fade over 500ms via a gain ramp; the tune only swaps once the
+fade-out has finished, so nothing cuts abruptly.
+
+`startAudio()` runs once at load so the title tune starts on its own where the
+browser allows it, and again from `pointerdown` for browsers that require a
+gesture. The `resume()` rejection is caught: an unhandled one would log an
+error, and the competition requires a clean console.
+
+Two mute controls, both writing the same setting: a music-note button in the
+title screen's top-right corner (notes dim and a white slash crosses them when
+muted) and a Music On/Off button on the pause screen. Saved to `localStorage`
+under `ktd:music` - namespaced because js13k games share one origin - wrapped
+in try/catch since private browsing throws.
 
 ## Performance Rules
 
