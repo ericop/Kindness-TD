@@ -374,7 +374,7 @@ const buddyCosts = {
   dog: 80,
   affirm: 20,
   radio: 50,
-  unicorn: 120
+  unicorn: 0
 };
 
 const buildMenuButtons = [
@@ -769,9 +769,8 @@ function startGame(advancedMode = false) {
   grid.blocked.clear();
   textBubbles.length = 0;
 
-  // Advanced doubles every grumpy's sad meter, but the player still starts on
-  // 100 Kindness while HappyHorn costs 120 - round 1 was close to unwinnable.
-  // She joins for free, in the middle of town.
+  // Advanced doubles every grumpy's sad meter, so HappyHorn is waiting in the middle of town from the first
+  // grumpy rather than costing the player the tile-picking turn. She is free in both modes; this is the placement.
   if (advancedMode) {
     placeBuddy(Math.floor(grid.cols / 2), Math.floor(grid.rows / 2), "unicorn", true);
   }
@@ -835,9 +834,9 @@ function createGrumpy(delay=0, options = {}){
         this.inHappyHangout = Math.hypot(tx - this.x, ty - this.y) <= 6;
         if (this.inHappyHangout && !this.rewardGranted) {
           this.rewardGranted = true;
-          state.careCredits += 10;
+          state.careCredits += 5;
           textBubbles.push({
-          text: "+10 ❤️",
+          text: "+5 ❤️",
             x: this.x + (Math.random() * 12 - 6),
             y: this.y - 20,
             target: null,
