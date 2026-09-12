@@ -568,105 +568,117 @@ function updateMenuGrumpies(dt) {
   });
 }
 
+// =========================
+// GRUMPY PIXEL ART
+// Grumpies used to be smooth canvas arcs, which read as a different game to the pixel-art buddies standing next
+// to them. Everything that makes up a grumpy now lands on the same kind of grid the buddies use: a 10x10 head,
+// one block = 2px at scale 1, so the silhouette still measures the same 20px across as the old circle.
+// =========================
+// One block size for everything standing on the playfield. Grumpies used to draw at 2px a block against the
+// buddies' 4px, which is what made them look like art from a different game even after they were pixelated: the
+// blocks have to be the same size for the grid to read as one grid. At 4px a block a head needs 7 cells to still
+// hold a face - 6 came out a rounded square with a letterbox for a mouth - so a grumpy is 28px against a 40px
+// buddy: bigger than the 20px circle they used to be, and still clearly the smaller figure.
+const PLAYFIELD_PIXEL_BLOCK = 4;
+const GRUMPY_PIXEL_DIM = 7;
+const GRUMPY_CENTER = (GRUMPY_PIXEL_DIM - 1) / 2;
+const GRUMPY_RADIUS = (GRUMPY_PIXEL_DIM * PLAYFIELD_PIXEL_BLOCK) / 2;
+
+// A circle on a grid is a ring of blocks, so the head, the headphone band and the thorns are all generated from
+// one polar test rather than hand-listed. Cells outside the 10x10 head are allowed: accessories hang off the edge.
+function grumpyRingCells(inner, outer, filter) {
+  const cells = [];
+  for (let y = -2; y < GRUMPY_PIXEL_DIM + 2; y++) {
+    for (let x = -2; x < GRUMPY_PIXEL_DIM + 2; x++) {
+      const d = Math.hypot(x - GRUMPY_CENTER, y - GRUMPY_CENTER);
+      if (d >= inner && d <= outer && (!filter || filter(x, y))) cells.push({ x, y });
+    }
+  }
+  return cells;
+}
+
+const GRUMPY_BODY = grumpyRingCells(0, 3.4);
+const GRUMPY_RIM = grumpyRingCells(2.6, 3.4);
+const GRUMPY_EYES = [{ x: 2, y: 2 }, { x: 4, y: 2 }];
+
+// The mouth is the only part that changes when they cheer up: corners down for a frown, corners up for a smile.
+const GRUMPY_FROWN = [{ x: 2, y: 5 }, { x: 3, y: 4 }, { x: 4, y: 5 }];
+const GRUMPY_SMILE = [{ x: 2, y: 4 }, { x: 3, y: 5 }, { x: 4, y: 4 }];
+
+const GRUMPY_SAD_COLORS = { body: "#8a8a8a", rim: "#616161" };
+const GRUMPY_HAPPY_COLORS = { body: "#ffd700", rim: "#d1a300" };
+
+const HEADPHONE_BAND = grumpyRingCells(3.7, 4.6, (x, y) => y <= GRUMPY_CENTER);
+const HEADPHONE_CUPS = [-1, 7].flatMap(x => [2, 3, 4].map(y => ({ x, y })));
+const HEADPHONE_PADS = [0, 6].map(x => ({ x, y: 3 }));
+
+// Eight spikes of two blocks each. They change the silhouette rather than adding detail inside it, so a no-hug
+// grumpy is still pickable out of a moving queue.
+const GRUMPY_THORNS = Array.from({ length: 8 }, (unused, i) => (i / 8) * Math.PI * 2)
+  .flatMap(angle => [3.7, 4.7].map(r => ({
+    x: Math.round(GRUMPY_CENTER + Math.cos(angle) * r),
+    y: Math.round(GRUMPY_CENTER + Math.sin(angle) * r)
+  })));
+
+const GRUMPY_MASK = [1, 2, 3, 4, 5].flatMap(x => [4, 5].map(y => ({ x, y })));
+const GRUMPY_MASK_PLEAT = [1, 2, 3, 4, 5].map(x => ({ x, y: 4 }));
+const GRUMPY_MASK_STRAPS = [{ x: 0, y: 4 }, { x: 6, y: 4 }];
+
+function drawGrumpyCells(ctx, grumpy, cells, color) {
+  const block = PLAYFIELD_PIXEL_BLOCK * (grumpy.scale || 1);
+  const originX = grumpy.x - (GRUMPY_PIXEL_DIM * block) / 2;
+  const originY = grumpy.y - (GRUMPY_PIXEL_DIM * block) / 2;
+
+  ctx.fillStyle = color;
+  cells.forEach(cell => {
+    const left = Math.round(originX + cell.x * block);
+    const top = Math.round(originY + cell.y * block);
+    const right = Math.round(originX + (cell.x + 1) * block);
+    const bottom = Math.round(originY + (cell.y + 1) * block);
+    ctx.fillRect(left, top, right - left, bottom - top);
+  });
+}
+
 function drawGrumpySprite(ctx, grumpy, showHealthBar = true) {
   const scale = grumpy.scale || 1;
-  const radius = 10 * scale;
+  const radius = GRUMPY_RADIUS * scale;
+  const mood = grumpy.isHappy ? GRUMPY_HAPPY_COLORS : GRUMPY_SAD_COLORS;
 
-  ctx.fillStyle=grumpy.isHappy?'gold':'gray';
-  ctx.beginPath();
-  ctx.arc(grumpy.x,grumpy.y,radius,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(grumpy.x - 3 * scale, grumpy.y - 2 * scale, 1.2 * scale, 0, Math.PI * 2);
-  ctx.arc(grumpy.x + 3 * scale, grumpy.y - 2 * scale, 1.2 * scale, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 1.5 * scale;
-  ctx.beginPath();
-  if (grumpy.isHappy) {
-    ctx.arc(grumpy.x, grumpy.y + 2 * scale, 4 * scale, 0.15 * Math.PI, 0.85 * Math.PI);
-  } else {
-    ctx.arc(grumpy.x, grumpy.y + 7 * scale, 4 * scale, 1.15 * Math.PI, 1.85 * Math.PI);
-  }
-  ctx.stroke();
+  drawGrumpyCells(ctx, grumpy, GRUMPY_BODY, mood.body);
+  drawGrumpyCells(ctx, grumpy, GRUMPY_RIM, mood.rim);
+  drawGrumpyCells(ctx, grumpy, GRUMPY_EYES, "#111");
+  drawGrumpyCells(ctx, grumpy, grumpy.isHappy ? GRUMPY_SMILE : GRUMPY_FROWN, "#111");
 
   if (showHealthBar) {
+    const barWidth = GRUMPY_RADIUS * 2 * scale;
+    const barY = grumpy.y - (GRUMPY_RADIUS + 8) * scale;
+
     ctx.fillStyle='red';
-    ctx.fillRect(grumpy.x-10 * scale,grumpy.y-18 * scale,20 * scale,3 * scale);
+    ctx.fillRect(grumpy.x - radius, barY, barWidth, 3 * scale);
 
     ctx.fillStyle='lime';
-    ctx.fillRect(grumpy.x-10 * scale,grumpy.y-18 * scale,20 * scale*(1-grumpy.sad/grumpy.maxSad),3 * scale);
+    ctx.fillRect(grumpy.x - radius, barY, barWidth*(1-grumpy.sad/grumpy.maxSad), 3 * scale);
   }
 
-  // Every offset here is scaled. Unscaled, the band sat at radius 11 against
-  // Headphone Hank's radius-15 head - 4px inside his skull, with the earcups
-  // not even reaching his edge, which is why they looked clamped on.
+  // The band rides outside the head at every scale, which is what the old arc version kept getting wrong on
+  // Headphone Hank: it sat 4px inside his larger skull with the earcups not reaching his edge.
   if (grumpy.hasHeadphones) {
-    ctx.strokeStyle = 'rgba(190, 120, 255, 0.65)';
-    ctx.lineWidth = 4 * scale;
-    ctx.beginPath();
-    ctx.arc(grumpy.x, grumpy.y - 4 * scale, 11 * scale, Math.PI, 2 * Math.PI);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#5c2d91';
-    ctx.lineWidth = 2 * scale;
-    ctx.beginPath();
-    ctx.arc(grumpy.x, grumpy.y - 4 * scale, 8 * scale, Math.PI, 2 * Math.PI);
-    ctx.stroke();
-
-    ctx.fillStyle = '#8750c7';
-    ctx.fillRect(grumpy.x - 14 * scale, grumpy.y - 2 * scale, 6 * scale, 8 * scale);
-    ctx.fillRect(grumpy.x + 8 * scale, grumpy.y - 2 * scale, 6 * scale, 8 * scale);
-
-    ctx.fillStyle = '#b28ae6';
-    ctx.fillRect(grumpy.x - 13 * scale, grumpy.y, 2 * scale, 4 * scale);
-    ctx.fillRect(grumpy.x + 11 * scale, grumpy.y, 2 * scale, 4 * scale);
+    drawGrumpyCells(ctx, grumpy, HEADPHONE_BAND, "#b28ae6");
+    drawGrumpyCells(ctx, grumpy, HEADPHONE_CUPS, "#5c2d91");
+    drawGrumpyCells(ctx, grumpy, HEADPHONE_PADS, "#8750c7");
   }
 
   if (grumpy.hasDogAllergy) {
-    ctx.fillStyle = '#f5f7fa';
-    ctx.fillRect(grumpy.x - 6 * scale, grumpy.y + 1 * scale, 12 * scale, 5 * scale);
-
-    ctx.fillStyle = '#d9dee5';
-    ctx.fillRect(grumpy.x - 4 * scale, grumpy.y + 2 * scale, 8 * scale, 1 * scale);
-
-    ctx.strokeStyle = '#b8c2cc';
-    ctx.lineWidth = 1.5 * scale;
-    ctx.beginPath();
-    ctx.moveTo(grumpy.x - 6 * scale, grumpy.y + 2 * scale);
-    ctx.lineTo(grumpy.x - 10 * scale, grumpy.y + 1 * scale);
-    ctx.moveTo(grumpy.x + 6 * scale, grumpy.y + 2 * scale);
-    ctx.lineTo(grumpy.x + 10 * scale, grumpy.y + 1 * scale);
-    ctx.stroke();
+    drawGrumpyCells(ctx, grumpy, GRUMPY_MASK, "#f5f7fa");
+    drawGrumpyCells(ctx, grumpy, GRUMPY_MASK_PLEAT, "#d9dee5");
+    drawGrumpyCells(ctx, grumpy, GRUMPY_MASK_STRAPS, "#b8c2cc");
   }
 
   // Thorns drop away once they cheer up: nothing is left to warn the player
   // about, and softening as they head for the Happy Hangout is the whole point
   // of the game.
   if (grumpy.avoidsHugs && !grumpy.isHappy) {
-    // Prickly. The thorns change the silhouette rather than adding detail
-    // inside it, so a no-hug grumpy can be picked out of a moving queue
-    // without looking straight at them. Thorn tips stop at 13.5, which keeps
-    // them clear of the sad meter at y-15.
-    ctx.fillStyle = '#5f7180';
-    const thornCount = 10;
-    const thornHalfWidth = 0.17;
-
-    for (let i = 0; i < thornCount; i++) {
-      const angle = (i / thornCount) * Math.PI * 2 - Math.PI / 2;
-      const a0 = angle - thornHalfWidth;
-      const a1 = angle + thornHalfWidth;
-
-      ctx.beginPath();
-      ctx.moveTo(grumpy.x + Math.cos(a0) * 9 * scale, grumpy.y + Math.sin(a0) * 9 * scale);
-      ctx.lineTo(grumpy.x + Math.cos(angle) * 13.5 * scale, grumpy.y + Math.sin(angle) * 13.5 * scale);
-      ctx.lineTo(grumpy.x + Math.cos(a1) * 9 * scale, grumpy.y + Math.sin(a1) * 9 * scale);
-      ctx.closePath();
-      ctx.fill();
-    }
+    drawGrumpyCells(ctx, grumpy, GRUMPY_THORNS, "#5f7180");
   }
 
   // The Stress Eater carries his snack, which is what tells him apart at a
@@ -2354,7 +2366,7 @@ function draw(){
   drawRainbowTrail(ctx);
 
   hugBuddies.forEach((t,i)=>{
-    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.hug, 4, i*0.5, 2, 0.006);
+    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.hug, PLAYFIELD_PIXEL_BLOCK, i*0.5, 2, 0.006);
     if (t.isGrumpy) drawBuddyGrumpiness(ctx, t);
   });
 
@@ -2365,7 +2377,7 @@ function draw(){
   //   ctx.fill();
   // });
   therapyDogs.forEach((d,i)=>{
-    drawBuddySpriteCentered(ctx, d.x, d.y, buddyPixelArt.dog, 4, i*0.3, 1.5, 0.007);
+    drawBuddySpriteCentered(ctx, d.x, d.y, buddyPixelArt.dog, PLAYFIELD_PIXEL_BLOCK, i*0.3, 1.5, 0.007);
     if (d.isGrumpy) drawBuddyGrumpiness(ctx, d);
   });
 
@@ -2376,7 +2388,7 @@ function draw(){
   //   ctx.fill();
   // });
   affirmBuddies.forEach((t,i)=>{
-    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.affirm, 4, i*0.2, 1.8, 0.008);
+    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.affirm, PLAYFIELD_PIXEL_BLOCK, i*0.2, 1.8, 0.008);
     if (t.isGrumpy) drawBuddyGrumpiness(ctx, t);
   });
 

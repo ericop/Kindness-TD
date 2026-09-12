@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kindness TD sprite preview</title>
+  <style>
+    body { margin: 0; padding: 16px; background: #1f2a44; color: #f0f6ff; font-family: Arial, sans-serif; }
+    h1 { font-size: 18px; margin: 0 0 4px; color: #ff7ab6; }
+    p.note { font-size: 13px; color: #9fb0cc; margin: 0 0 16px; max-width: 620px; }
+    #gameMount { display: none; }
+    .row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
+    .cell { background: #16213e; border: 1px solid #2a3a5a; border-radius: 10px; padding: 10px; text-align: center; }
+    .cell canvas { display: block; image-rendering: pixelated; background: #16213e; }
+    .cell span { display: block; font-size: 12px; color: #cdd9ee; margin-top: 6px; }
+    h2 { font-size: 14px; font-weight: normal; color: #9fb0cc; margin: 0 0 8px; }
+    label { font-size: 13px; color: #cdd9ee; }
+  </style>
+</head>
+<body>
+  <h1>Kindness TD sprite preview</h1>
+  <p class="note">
+    Every sprite here is drawn by the game's own <code>drawGrumpySprite</code> and <code>buddyPixelArt</code>,
+    loaded from the same files the game ships, so this page cannot drift from what you see in play.
+    Zoom changes the canvas scale only, not the sprite.
+  </p>
+
+  <label>Zoom <input id="zoom" type="range" min="1" max="8" step="1" value="4"> <span id="zoomLabel">4x</span></label>
+
+  <h2 style="margin-top:20px">Grumpies, sad</h2>
+  <div class="row" id="sad"></div>
+
+  <h2>Grumpies, cheered up</h2>
+  <div class="row" id="happy"></div>
+
+  <h2>Kindness crew</h2>
+  <div class="row" id="buddies"></div>
+
+  <div id="gameMount"></div>
+  <script defer src="../kindness-core.js"></script>
+  <script defer src="../kindness-td.js"></script>
+  <script defer>
+    const GRUMPY_VARIANTS = [
+      { label: "Plain", opts: {} },
+      { label: "Headphone Hank", opts: { hasHeadphones: true } },
+      { label: "Dog allergy", opts: { hasDogAllergy: true } },
+      { label: "No hugs", opts: { avoidsHugs: true } },
+      { label: "Stress Eater", opts: { isStressEater: true, scale: 1.25 } },
+      { label: "Negative Neil", opts: { isBoss: true, scale: 1.5, name: "Negative Neil" } }
+    ];
+
+    function makeCell(parent, label, drawFn, box) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      const canvas = document.createElement("canvas");
+      const caption = document.createElement("span");
+      caption.textContent = label;
+      cell.append(canvas, caption);
+      parent.append(cell);
+      return { canvas, box, drawFn };
+    }
+
+    const cells = [];
+
+    function buildOnce() {
+      GRUMPY_VARIANTS.forEach(variant => {
+        [["sad", false], ["happy", true]].forEach(([host, isHappy]) => {
+          cells.push(makeCell(document.getElementById(host), variant.label, (ctx, box) => {
+            drawGrumpySprite(ctx, {
+              x: box / 2, y: box / 2, scale: variant.opts.scale || 1,
+              isHappy, sad: 50, maxSad: 100, eatTimer: 0, ...variant.opts,
+              name: ""
+            }, false);
+          }, 44));
+        });
+      });
+
+      Object.keys(buddyPixelArt).forEach(key => {
+        cells.push(makeCell(document.getElementById("buddies"), key, (ctx, box) => {
+          drawBuddySpriteCentered(ctx, box / 2, box / 2, buddyPixelArt[key], 4, 0, 0, 0);
+        }, 44));
+      });
+
+      unicornArtByLevel.forEach((art, index) => {
+        cells.push(makeCell(document.getElementById("buddies"), "HappyHorn Lv" + (index + 1), (ctx, box) => {
+          drawBuddySpriteCentered(ctx, box / 2, box / 2, art, 4, 0, 0, 0);
+        }, 44));
+      });
+    }
+
+    function render() {
+      const zoom = Number(document.getElementById("zoom").value);
+      document.getElementById("zoomLabel").textContent = zoom + "x";
+
+      cells.forEach(({ canvas, box, drawFn }) => {
+        canvas.width = box;
+        canvas.height = box;
+        canvas.style.width = box * zoom + "px";
+        canvas.style.height = box * zoom + "px";
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, box, box);
+        drawFn(ctx, box);
+      });
+    }
+
+    addEventListener("load", () => {
+      buildOnce();
+      render();
+      document.getElementById("zoom").addEventListener("input", render);
+    });
+  </script>
+</body>
+</html>
