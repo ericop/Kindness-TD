@@ -89,7 +89,20 @@ match: `buddyCosts`, `placeBuddy`, `canPlaceBuddy`, `buddyPixelArt`, `hugBuddies
 - AoE passive
 - Low sadness reduction
 
-### HappyHorn the Unicorn (hero)
+### Grumpies
+- Pixel art on the **same block size as the buddies**: `PLAYFIELD_PIXEL_BLOCK`
+  is 4px and both read it, so the two can no longer drift. A grumpy is a 7x7
+  head (28px) against a 40px buddy. 6x6 was tried first and came out a rounded
+  square with a letterbox mouth
+- The head, headphone band and thorns all come from one polar test
+  (`grumpyRingCells`) rather than hand-listed pixels
+- `drawGrumpyCells` snaps every block to whole pixels. The Stress Eater's 1.25
+  scale otherwise lands blocks on half-pixels, and canvas antialiases those into
+  a blur
+- `tools/sprite-preview.html` renders every grumpy and buddy variant at a chosen
+  zoom, using the real draw functions. Dev only, not in the build
+
+### Happy Horn the Unicorn (hero)
 - Hero unit, limited to one on the field
 - Auto-circles the nearest grumpy instead of standing still
 - Leaves a fading rainbow trail; the trail itself cheers up grumpies it touches
@@ -97,10 +110,15 @@ match: `buddyCosts`, `placeBuddy`, `canPlaceBuddy`, `buddyPixelArt`, `hugBuddies
 - Immune to Negative Neil. Without this she is actively bad against him: she
   orbits at 34px, inside his 90px souring aura, so she would fly in and be
   disabled in about five seconds
-- **Advanced Mode gives her for free**, pre-placed in the centre cell. Advanced
-  doubles every grumpy's sad meter while the player still starts on 100
-  Kindness and she costs 120, which made round 1 close to unwinnable. The
-  one-hero rule still applies, so she cannot be stacked with a bought one
+- **Free to place in both modes.** What she costs the player is the tile she
+  stands on and the Kindness her training takes, not a purchase price
+- **Five levels** (`UNICORN_LEVELS`), bought by clicking her. They alternate,
+  and each keeps what the level below bought: 2 faster (190), 3 stronger (240),
+  4 faster (300), 5 stronger (380). Her coat recolours white, pink, purple,
+  blue, gold so the level reads from across the field
+- **Advanced Mode pre-places her** in the centre cell, so she is painting from
+  the first grumpy rather than costing the player a tile-picking turn. The
+  one-hero rule still applies, so she cannot be stacked with a placed one
 
 ---
 

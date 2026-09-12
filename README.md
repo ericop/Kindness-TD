@@ -34,6 +34,24 @@ That writes `dist/index.html` (everything inlined and minified) and
 fails if it is over. See [JS13K-2026.md](JS13K-2026.md) for the full rules
 checklist.
 
+### The two versions
+
+One source, two artifacts. They are the same game, packaged differently:
+
+| | Where it lives | What it is |
+| --- | --- | --- |
+| **Big** | GitHub Pages, served from the repo root | `index.html` plus the readable `kindness-core.js` and `kindness-td.js`. No size limit |
+| **Little** | `dist/kindness-td.zip` | One inlined, minified, mangled `index.html`. This is the file the competition wants, and it must stay at or under 13,312 bytes |
+
+The competition asks for a **`.zip`**, not a `.gz`, with `index.html` at the
+archive's top level. `npm run build` produces exactly that and fails if the
+archive is over budget or the layout is wrong, so a passing build is a
+submittable build.
+
+Because only the little version is capped, the hosted big version is free to
+grow. Nothing is set up to make them differ today; if you ever want that, keep
+one source and strip the extras at build time rather than forking the files.
+
 ## How To Play
 
 - Click `Start Game`.
@@ -51,9 +69,9 @@ The game calls the units you place **buddies**, and the group of them your
 - `TherapyDog`: helps up to four grumpies at once and gently pulls them closer.
 - `AffirmingWords`: sends speech-bubble shots at grumpies.
 - `GladRadio`: passively helps grumpies in an area.
-- `HappyHorn` (hero): a unicorn who orbits nearby grumpies, paints a rainbow
+- `Happy Horn` (hero): a unicorn who orbits nearby grumpies, paints a rainbow
   trail as she flies, and cheers up everyone the rainbow touches. Only one
-  HappyHorn can be on the field at a time.
+  Happy Horn can be on the field at a time.
 
 ## Project Notes
 
@@ -63,6 +81,12 @@ The game calls the units you place **buddies**, and the group of them your
 - Game logic in [kindness-td.js](kindness-td.js), setup and pathfinding in
   [kindness-core.js](kindness-core.js)
 - Build tooling in [tools/](tools)
+
+Every sprite in the game is pixel art on a small grid, grumpies included. To see
+them all at once, run `npm run serve` and open
+[localhost:8013/tools/sprite-preview.html](http://localhost:8013/tools/sprite-preview.html).
+It loads the real game files and calls the real draw functions, so it cannot
+drift from what ships, and it is not part of the build.
 
 ## GitHub Pages Setup
 
