@@ -48,7 +48,13 @@ async function buildJs() {
       drop_console: true,
       hoist_funs: true
     },
-    mangle: DEBUG ? false : { toplevel: true },
+    // Property mangling is opt-in per name, never blanket: the regex lists only fields the game invents and reads
+    // back through a dot. Anything crossing a boundary terser cannot see - DOM and canvas properties, and anything
+    // reached by string - must stay off this list or it breaks silently at runtime, not at build time.
+    mangle: DEBUG ? false : {
+      toplevel: true,
+      properties: { regex: /^(orbitSpeed|flySpeed|relief|upgradeCost|upgradeLabel|homeX|homeY|dropTimer|colorIndex|buddyType|buddyIcon|isHappy|isGrumpy|isHugged|isBoss|isStressEater|hasHeadphones|hasDogAllergy|avoidsHugs|reachedEnd|rewardGranted|inHappyHangout|targetCookie|eatTimer|maxSad|pathIndex|grumpiness|ignoresRadio|ignoresAffirmations|allergicToDogs|bossName|bossHp)$/ }
+    },
     format: { comments: false }
   });
 
