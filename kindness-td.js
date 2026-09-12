@@ -194,7 +194,7 @@ function beginRoundFlow(roundNumber) {
   state.instructionPages = pages;
   state.instructionPageIndex = 0;
   state.gameMode = "instructions";
-  placementMenu.active = false;
+  closePopupMenus();
 }
 
 function moveToHappyHangout(grumpy, dt) {
@@ -285,7 +285,7 @@ function startRound(roundNumber) {
   state.grumpies = [];
   state.happyCount = 0;
   state.totalSpawned = getRoundSpawnCount(roundNumber);
-  placementMenu.active = false;
+  closePopupMenus();
   textBubbles.length = 0;
   rainbowTrail.length = 0;
   spawnCookies();
@@ -509,6 +509,22 @@ radio: [
     { x: 2, y: 9, c: "#b98cff" }, { x: 3, y: 9, c: "#b98cff" }, { x: 5, y: 9, c: "#b98cff" }, { x: 6, y: 9, c: "#b98cff" }
   ],
 };
+
+// Levelling only recolours her coat: the golden horn, the rainbow mane and the violet hooves stay exactly where
+// they were, so a trained HappyHorn still reads as HappyHorn rather than as some other unicorn.
+const UNICORN_COAT_TINTS = [
+  null,
+  { "#ffffff": "#ff8dc2", "#fff6fb": "#ffaed4", "#ffc9de": "#e75f9e" },
+  { "#ffffff": "#b98cff", "#fff6fb": "#cdaaff", "#ffc9de": "#8d5adb" },
+  { "#ffffff": "#4dc3ff", "#fff6fb": "#71cfff", "#ffc9de": "#15b0ff" },
+  { "#ffffff": "#ffd93d", "#fff6fb": "#ffe061", "#ffc9de": "#ffce05" }
+];
+
+const unicornArtByLevel = UNICORN_COAT_TINTS.map(tint =>
+  tint
+    ? buddyPixelArt.unicorn.map(pixel => (tint[pixel.c] ? { ...pixel, c: tint[pixel.c] } : pixel))
+    : buddyPixelArt.unicorn
+);
 
 const menuGrumpies = [];
 
@@ -1196,10 +1212,25 @@ const unicorns=[];
 // and paints a rainbow behind her, and that rainbow keeps cheering grumpies up
 // for a moment after she has passed.
 const UNICORN_ORBIT_RADIUS = 34;
-const UNICORN_ORBIT_SPEED = 2.6;      // radians per second
 const UNICORN_SEEK_RANGE = 300;       // how far from her cell she looks for a grumpy
-const UNICORN_FLY_SPEED = 170;        // px per second she closes on her orbit point
-const UNICORN_SAD_RELIEF = 22;        // sad meter per second from the rainbow
+
+// She is the only buddy who levels up, and the upgrades stack: level 2 buys speed, level 3 buys strength on top
+// of it. Her coat colour changes with the level so the player can read how trained she is from across the field.
+const UNICORN_LEVELS = [
+  // orbitSpeed: radians/sec  flySpeed: px/sec  relief: sad meter per second from the rainbow
+  // The upgrades alternate: odd levels buy speed, even levels buy strength, and each one keeps everything the
+  // level below it bought.
+  { orbitSpeed: 2.6, flySpeed: 170, relief: 22, upgradeCost: 190, upgradeLabel: "Faster" },
+  { orbitSpeed: 4.2, flySpeed: 240, relief: 22, upgradeCost: 240, upgradeLabel: "Stronger" },
+  { orbitSpeed: 4.2, flySpeed: 240, relief: 40, upgradeCost: 300, upgradeLabel: "Faster" },
+  { orbitSpeed: 5.6, flySpeed: 310, relief: 40, upgradeCost: 380, upgradeLabel: "Stronger" },
+  { orbitSpeed: 5.6, flySpeed: 310, relief: 62, upgradeCost: 0,   upgradeLabel: "" }
+];
+const UNICORN_MAX_LEVEL = UNICORN_LEVELS.length;
+const UNICORN_RING_COLORS = [
+  "rgba(185,140,255,0.35)", "rgba(255,141,194,0.6)", "rgba(160,92,255,0.8)",
+  "rgba(77,195,255,0.8)", "rgba(255,217,61,0.85)"
+];
 const RAINBOW_TOUCH_RADIUS = 16;
 const RAINBOW_LIFE = 1.1;             // seconds a rainbow segment lingers
 const RAINBOW_DROP_INTERVAL = 0.03;   // seconds between segments
@@ -1391,8 +1422,8 @@ function findNearestSadGrumpy(x, y, range) {
   return nearest;
 }
 
-function cheerUpWithRainbow(grumpy, dt) {
-  grumpy.sad -= UNICORN_SAD_RELIEF * dt;
+function cheerUpWithRainbow(grumpy, dt, relief) {
+  grumpy.sad -= relief * dt;
   if (grumpy.sad <= 0) markGrumpyHappy(grumpy);
 }
 
@@ -1406,6 +1437,8 @@ function applyHappyHorn(dt) {
       u.target = null;
       return;
     }
+
+    const stats = UNICORN_LEVELS[u.level - 1];
 
     // Stay with the same grumpy until they cheer up or leave, so she does not
     // flicker between two equally close targets.
@@ -1421,7 +1454,7 @@ function applyHappyHorn(dt) {
     const centerX = u.target ? u.target.x : u.homeX;
     const centerY = u.target ? u.target.y : u.homeY;
 
-    u.angle += UNICORN_ORBIT_SPEED * dt;
+    u.angle += stats.orbitSpeed * dt;
 
     // The circle is squashed vertically so it reads as a loop on the ground
     // rather than a flat ring.
@@ -1435,7 +1468,7 @@ function applyHappyHorn(dt) {
     const distance = Math.hypot(dx, dy);
 
     if (distance > 1) {
-      const step = Math.min(UNICORN_FLY_SPEED * dt, distance);
+      const step = Math.min(stats.flySpeed * dt, distance);
       u.x += (dx / distance) * step;
       u.y += (dy / distance) * step;
     }
@@ -1448,7 +1481,8 @@ function applyHappyHorn(dt) {
         x: u.x,
         y: u.y,
         c: RAINBOW_COLORS[u.colorIndex],
-        life: RAINBOW_LIFE
+        life: RAINBOW_LIFE,
+        relief: stats.relief
       });
     }
 
@@ -1457,7 +1491,7 @@ function applyHappyHorn(dt) {
     // instead of waiting for the rainbow to catch them by accident.
     if (u.target && !helped.has(u.target)) {
       helped.add(u.target);
-      cheerUpWithRainbow(u.target, dt);
+      cheerUpWithRainbow(u.target, dt, stats.relief);
       if (u.target.isHappy) u.target = null;
     }
   });
@@ -1479,14 +1513,17 @@ function updateRainbowTrail(dt, helped) {
     if (!grumpy.active || grumpy.isHappy || grumpy.reachedEnd) return;
     if (helped.has(grumpy)) return;
 
-    const touching = rainbowTrail.some(
-      segment =>
-        Math.hypot(grumpy.x - segment.x, grumpy.y - segment.y) < RAINBOW_TOUCH_RADIUS
-    );
+    // Segments carry the strength HappyHorn had when she painted them, and the strongest one a grumpy is
+    // standing in wins. Adding them up would make relief depend on how densely the trail happens to be drawn.
+    let relief = 0;
+    rainbowTrail.forEach(segment => {
+      if (segment.relief <= relief) return;
+      if (Math.hypot(grumpy.x - segment.x, grumpy.y - segment.y) < RAINBOW_TOUCH_RADIUS) relief = segment.relief;
+    });
 
-    if (!touching) return;
+    if (!relief) return;
 
-    cheerUpWithRainbow(grumpy, dt);
+    cheerUpWithRainbow(grumpy, dt, relief);
   });
 }
 
@@ -1566,6 +1603,72 @@ const placementMenu = {
   cx: 0,
   cy: 0
 };
+
+// Clicking a HappyHorn already on the field opens her training button. Only one of the two popups is ever open,
+// so building and upgrading never fight over the same click.
+const upgradeMenu = { unicorn: null };
+
+function closePopupMenus() {
+  placementMenu.active = false;
+  upgradeMenu.unicorn = null;
+}
+
+// Her own tile never did anything before - it is blocked, so the build menu refuses it - and she is usually off
+// circling a grumpy, so both the tile and wherever she has flown to count as clicking her.
+function getUnicornAt(x, y, cx, cy) {
+  return unicorns.find(u =>
+    Math.hypot(x - u.x, y - u.y) < 22 ||
+    (cx === Math.floor(u.homeX / GRID_SIZE) && cy === Math.floor(u.homeY / GRID_SIZE))
+  ) || null;
+}
+
+function canUpgradeUnicorn(u) {
+  return u.level < UNICORN_MAX_LEVEL &&
+    state.careCredits >= UNICORN_LEVELS[u.level - 1].upgradeCost;
+}
+
+function upgradeUnicorn(u) {
+  state.careCredits -= UNICORN_LEVELS[u.level - 1].upgradeCost;
+  u.level++;
+  upgradeMenu.unicorn = null;
+}
+
+// Anchored to her home cell rather than to her sprite, so the button does not fly away mid-click.
+function getUnicornUpgradeButton(u) {
+  const w = prefersCoarsePointer ? 160 : 136;
+  const h = prefersCoarsePointer ? 40 : 28;
+  const gapFromCell = GRID_SIZE / 2 + BUILD_MENU_GAP;
+  const fitsOnRight = u.homeX + gapFromCell + w + 4 <= canvas.width;
+
+  return {
+    x: clamp(fitsOnRight ? u.homeX + gapFromCell : u.homeX - gapFromCell - w, 4, canvas.width - w - 4),
+    y: clamp(u.homeY - h / 2, BUILD_MENU_TOP, canvas.height - h - 4),
+    w,
+    h
+  };
+}
+
+function drawPopupButton(ctx, rect, label, enabled) {
+  ctx.fillStyle = "#243b55";
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+
+  ctx.fillStyle = enabled ? "#ffffff" : "#8a8a8a";
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2);
+}
+
+function getUnicornUpgradeLabel(u) {
+  // The button hangs off her own tile, so repeating her name here only made the label outgrow the button.
+  if (u.level >= UNICORN_MAX_LEVEL) return `Lv${u.level} - Fully Trained`;
+  const next = UNICORN_LEVELS[u.level - 1];
+  return `Lv${u.level + 1} ${next.upgradeLabel} (${next.upgradeCost})`;
+}
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -1655,7 +1758,7 @@ function resumeFromPause() {
 }
 
 function returnToMainMenu() {
-  placementMenu.active = false;
+  closePopupMenus();
   state.instructionPages = [];
   state.instructionPageIndex = 0;
   state.gameMode = "menu";
@@ -1749,13 +1852,13 @@ if (state.gameMode === "menu") {
   }
 
   if(state.gameMode==="gameover"){
-    placementMenu.active = false;
+    closePopupMenus();
     if(click) state.gameMode="menu";
     return;
   }
 
   if (click && pointInRect(x, y, pauseButton)) {
-    placementMenu.active = false;
+    closePopupMenus();
     state.pausedFromRound = state.currentRound;
     state.gameMode = "paused";
     return;
@@ -1763,6 +1866,24 @@ if (state.gameMode === "menu") {
 
   mouse.x=x; mouse.y=y;
   const {cx,cy}=getCell(x,y);
+
+  if (upgradeMenu.unicorn) {
+    if (pointInRect(x, y, getUnicornUpgradeButton(upgradeMenu.unicorn))) {
+      if (click && canUpgradeUnicorn(upgradeMenu.unicorn)) upgradeUnicorn(upgradeMenu.unicorn);
+      return;
+    }
+    if (!click) return;
+    upgradeMenu.unicorn = null;
+  }
+
+  if (click) {
+    const clicked = getUnicornAt(x, y, cx, cy);
+    if (clicked) {
+      placementMenu.active = false;
+      upgradeMenu.unicorn = clicked;
+      return;
+    }
+  }
 
   if (placementMenu.active) {
     updatePreviewAtCell(placementMenu.cx, placementMenu.cy);
@@ -1821,6 +1942,7 @@ function placeBuddy(cx,cy,buddyType=selectedBuddy,free=false){
   if(buddyType==="radio") radioBuddies.push({...baseBuddy, radius:120});
   if(buddyType==="unicorn") unicorns.push({
     ...baseBuddy,
+    level: 1,
     homeX: x,
     homeY: y,
     angle: 0,
@@ -2409,18 +2531,29 @@ function draw(){
     ctx.arc(t.x,t.y,t.radius,0,Math.PI*2);
     ctx.stroke();
 
-    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.radio, 4, i*0.4, 2.5, 0.005);
+    drawBuddySpriteCentered(ctx, t.x, t.y, buddyPixelArt.radio, PLAYFIELD_PIXEL_BLOCK, i*0.4, 2.5, 0.005);
     if (t.isGrumpy) drawBuddyGrumpiness(ctx, t);
   });
 
   unicorns.forEach((u,i)=>{
     // Mark her home cell faintly so the player can still see the tile she
     // occupies while she is off circling a grumpy.
-    ctx.strokeStyle = "rgba(185,140,255,0.35)";
+    ctx.strokeStyle = UNICORN_RING_COLORS[u.level - 1];
     ctx.lineWidth = 2;
     ctx.strokeRect(u.homeX - 18, u.homeY - 18, 36, 36);
 
-    drawBuddySpriteCentered(ctx, u.x, u.y, buddyPixelArt.unicorn, 4, i*0.6, 2.5, 0.009);
+    drawBuddySpriteCentered(ctx, u.x, u.y, unicornArtByLevel[u.level - 1], PLAYFIELD_PIXEL_BLOCK, i*0.6, 2.5, 0.009);
+
+    // The coat colour already says how trained she is; the badge on her tile says it in words, and only once she
+    // has actually been trained.
+    if (u.level > 1) {
+      ctx.fillStyle = UNICORN_RING_COLORS[u.level - 1];
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`Lv${u.level}`, u.homeX, u.homeY + 26);
+    }
+
     if (u.isGrumpy) drawBuddyGrumpiness(ctx, u);
   });
 
@@ -2487,31 +2620,15 @@ function draw(){
   ctx.fillText("Pause", pauseButton.x + pauseButton.w / 2, pauseButton.y + pauseButton.h / 2);
 
   if (placementMenu.active) {
-    const buttons = getPlacementMenuButtons(
-      placementMenu.cx,
-      placementMenu.cy
-    );
+    getPlacementMenuButtons(placementMenu.cx, placementMenu.cy).forEach(button => {
+      const cost = buddyCosts[button.buddyType];
+      drawPopupButton(ctx, button, `${button.label} (${cost || "Free"})`, canPlaceBuddy(button.buddyType));
+    });
+  }
 
-    for (const button of buttons) {
-      const canBuild = canPlaceBuddy(button.buddyType);
-
-      ctx.fillStyle = "#243b55";
-      ctx.fillRect(button.x, button.y, button.w, button.h);
-
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(button.x, button.y, button.w, button.h);
-
-      ctx.fillStyle = canBuild ? "#ffffff" : "#8a8a8a";
-      ctx.font = "12px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(
-        `${button.label} (${buddyCosts[button.buddyType]})`,
-        button.x + button.w / 2,
-        button.y + button.h / 2
-      );
-    }
+  if (upgradeMenu.unicorn) {
+    const u = upgradeMenu.unicorn;
+    drawPopupButton(ctx, getUnicornUpgradeButton(u), getUnicornUpgradeLabel(u), canUpgradeUnicorn(u));
   }
 
 
