@@ -90,10 +90,10 @@ function getRoundIntroPage(roundNumber) {
   const hpBonus = getRoundSadBonus(roundNumber);
   const count = getRoundGrumpyCount(roundNumber);
 
-  let body = `${count} grumpies are heading in. This round beefs them up by +${hpBonus} sad meter.`;
+  let body = `${count} grumpies incoming, +${hpBonus} sad meter each.`;
   if (roundNumber < state.totalRounds) {
     const nextJump = getRoundSadBonus(roundNumber + 1) - hpBonus;
-    body += ` Next round adds +${ROUND_SPAWN_INCREASE} grumpies and +${nextJump} sad meter.`;
+    body += ` Next round: +${ROUND_SPAWN_INCREASE} grumpies, +${nextJump} sad.`;
   }
 
   return { title: `Round ${roundNumber} Incoming`, body };
@@ -104,29 +104,29 @@ function getInstructionPages(roundNumber) {
     // Advanced Mode stays a surprise until it is earned, so the intro only
     // mentions it to someone already playing it, where it explains why
     // everything suddenly takes twice the kindness (hpMultiplier, createGrumpy).
-    const intro = "This game is all about kindness and spreading love to people who have grumpy hearts, so they can go hang out in the Happy Hangout. Build your kindness crew to do this.";
+    const intro = "Cheer up the grumpy hearts so they can go hang out in the Happy Hangout. Build your kindness crew to do it.";
 
     return [
       {
         title: "Round 1",
         body: state.advancedMode
-          ? intro + " You are playing Advanced Mode: every grumpy and boss starts with twice the sadness, so each one needs twice as much kindness!"
+          ? intro + " In Advanced Mode every grumpy and boss starts with twice the sadness."
           : intro
       },
       ...(state.advancedMode ? [{
         title: "The Stress Eater",
-        body: "Advanced Mode brings the Stress Eater. Cookies are scattered around town and he heads straight for the nearest one instead of the exit, stopping to nibble. He has twice the sadness of a normal grumpy, so use the time he wastes snacking.",
+        body: "The Stress Eater heads for the nearest cookie instead of the exit, stopping to nibble. He carries twice the sadness, so use the time he wastes snacking.",
         icon: { isStressEater: true }
       }] : []),
       state.advancedMode
         ? {
-            title: "HappyHorn Is Proud of You",
-            body: "You finished all ten rounds, so HappyHorn is not making you save up this time. She is already waiting in the middle of town, for free, painting rainbows from the very first grumpy.",
+            title: "Happy Horn Is Proud of You",
+            body: "You finished all ten rounds, so she is waiting in the middle of town, painting from the first grumpy. Click her to train up: pink and blue fly faster, purple and gold paint stronger.",
             buddyIcon: "unicorn"
           }
         : {
-            title: "Meet HappyHorn",
-            body: "HappyHorn the Unicorn is your hero. She flies circles around the nearest grumpy, painting a rainbow that cheers up every grumpy it touches. Only one at a time, so save up for her.",
+            title: "Meet Happy Horn",
+            body: "Your hero. She circles the nearest grumpy, painting a rainbow that cheers up everyone it touches. Free, but only one of her. Click her to train up: pink and blue fly faster, purple and gold paint stronger.",
             buddyIcon: "unicorn"
           }
     ];
@@ -136,7 +136,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 2",
-        body: "Headphone grumpies do not listen to Affirming Words and they tune out Glad Radio. Use hugs or other support to help them.",
+        body: "Headphone grumpies tune out Affirming Words and Glad Radio. Use hugs or dogs instead.",
         icon: { hasHeadphones: true, hasDogAllergy: false }
       }
     ];
@@ -146,7 +146,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 3",
-        body: "Some grumpies are allergic to therapy dogs. Their mask icon means Therapy Dogs will skip them, so use your other buddies instead.",
+        body: "A mask means allergic to dogs. Therapy Dogs skip them, so use your other buddies.",
         icon: { hasHeadphones: false, hasDogAllergy: true }
       }
     ];
@@ -156,7 +156,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 4",
-        body: "Some grumpies do not like hugs. Their prickly thorns mean Huggers will leave them alone, so use words, radio, or dogs to help them instead.",
+        body: "Thorns mean no hugs. Huggers leave them alone, so use words, radio, or dogs.",
         icon: { hasHeadphones: false, hasDogAllergy: false, avoidsHugs: true }
       }
     ];
@@ -166,7 +166,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 5 Boss Fight",
-        body: "A huge headphone grumpy is stomping in. Headphone Hank tunes out Affirming Words and Glad Radio, has a massive grumpy heart, but he is still partial to pets, so Therapy Dogs can help.",
+        body: "Headphone Hank tunes out Affirming Words and Glad Radio and has a massive grumpy heart, but he is still partial to pets, so Therapy Dogs can help.",
         icon: { isBoss: true, hasHeadphones: true, bossName: "Headphone Hank", bossHp: 1500 }
       }
     ];
@@ -176,7 +176,7 @@ function getInstructionPages(roundNumber) {
     return [
       {
         title: "Round 10 Boss Fight",
-        body: "Negative Neil is the gloomiest grump in town. Anything he brushes past goes grumpy in half a second, so keep your kindness crew off his route. HappyHorn is the one he cannot sour - let her circle him.",
+        body: "Anything Negative Neil brushes past goes grumpy in half a second, so keep your crew off his route. Happy Horn is the one he cannot sour - let her circle him.",
         icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1500 }
       }
     ];
@@ -382,7 +382,7 @@ const buildMenuButtons = [
   { label: "TherapyDog", buddyType: "dog" },
   { label: "AffirmingWords", buddyType: "affirm" },
   { label: "GladRadio", buddyType: "radio" },
-  { label: "HappyHorn", buddyType: "unicorn" }
+  { label: "Happy Horn", buddyType: "unicorn" }
 ];
 
 const BUILD_MENU_COLS = 2;
@@ -2124,6 +2124,8 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   if (line) {
     ctx.fillText(line, x, currentY);
   }
+
+  return currentY + lineHeight;
 }
 
 function draw(){
@@ -2307,26 +2309,32 @@ function draw(){
 
     ctx.font = "17px sans-serif";
     ctx.fillStyle = "#e7eefc";
-    wrapText(
+    const bodyBottom = wrapText(
       ctx,
       page.body,
       canvas.width / 2,
       112,
-      500,
+      560,
       26
     );
 
+    // The icon hangs off the bottom of the copy rather than off a fixed y, so a long body pushes it down instead
+    // of being drawn over. The floor keeps short pages looking the way they always did, and the sprite is centred
+    // on its own half-height so it does not creep under the page counter.
+    // A boss draws its name above its head, so it needs roughly a line more clearance over the sprite than a
+    // buddy or a plain grumpy does.
+    const iconTopGap = page.icon && page.icon.isBoss ? 42 : 18;
+    const iconCenterY = Math.min(234, Math.max(214, bodyBottom + iconTopGap));
+
     if (page.buddyIcon) {
-      // Sits higher than the grumpy icons because a 10x10 buddy sprite at this
-      // scale is taller and would otherwise run into the page counter.
       drawBuddySpriteCentered(
         ctx,
         canvas.width / 2,
-        224,
+        iconCenterY,
         buddyPixelArt[page.buddyIcon],
-        5,
+        PLAYFIELD_PIXEL_BLOCK,
         0,
-        3,
+        2,
         0.008
       );
     }
@@ -2336,7 +2344,7 @@ function draw(){
         ctx,
         {
           x: canvas.width / 2,
-          y: 245,
+          y: iconCenterY,
           sad: page.icon.isBoss ? (page.icon.bossHp || 1000) : 100,
           maxSad: page.icon.isBoss ? (page.icon.bossHp || 1000) : 100,
           isHappy: false,
