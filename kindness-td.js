@@ -27,7 +27,7 @@ const STRESS_EATER_OFFSET = 7;
 // so the crew compounded and the grumpies did not. At 20, difficulty growth
 // from round 3 to round 9 is 4.2x where it used to be 2.0x.
 const EASY_ROUNDS = 3;
-const ROUND_SAD_INCREASE = 20;
+const ROUND_SAD_INCREASE = 25;
 const ROUND_SAD_PER_LEVEL = 2;   // every round past the first, on top of the steeper climb after EASY_ROUNDS
 
 function getRoundSadBonus(roundNumber) {
