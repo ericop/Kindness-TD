@@ -28,9 +28,10 @@ const STRESS_EATER_OFFSET = 7;
 // from round 3 to round 9 is 4.2x where it used to be 2.0x.
 const EASY_ROUNDS = 3;
 const ROUND_SAD_INCREASE = 20;
+const ROUND_SAD_PER_LEVEL = 2;   // every round past the first, on top of the steeper climb after EASY_ROUNDS
 
 function getRoundSadBonus(roundNumber) {
-  return Math.max(0, roundNumber - 1)
+  return Math.max(0, roundNumber - 1) * ROUND_SAD_PER_LEVEL
        + Math.max(0, roundNumber - EASY_ROUNDS) * ROUND_SAD_INCREASE;
 }
 
