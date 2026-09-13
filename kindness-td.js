@@ -1292,6 +1292,12 @@ function applyCareCredits(dt){
 }
 
 function applyHugs(dt){
+  // isHugged is rebuilt from scratch every frame. Leaving it set was what froze a grumpy in place forever once
+  // his Hugger stopped holding him: nothing but cheering up ever cleared it, so Negative Neil could sour the
+  // Hugger mid-hug and then stand there held by a buddy that was no longer working. The flag blocks all movement,
+  // so it looked like any disabled buddy nearby was pinning him.
+  state.grumpies.forEach(g => { g.isHugged = false; });
+
   hugBuddies.forEach(t=>{
     if (t.isGrumpy) {
       t.target = null;
