@@ -120,8 +120,8 @@ function getInstructionPages(roundNumber) {
       }] : []),
       state.advancedMode
         ? {
-            title: "Happy Horn Is Proud of You",
-            body: "You finished all ten rounds, so she is waiting in the middle of town, painting from the first grumpy. Click her to train up: pink and blue fly faster, purple and gold paint stronger.",
+            title: "Happy Horn Has Been Training",
+            body: "You finished all ten rounds, so her rainbow now lasts three times as long. Click her to train her further: pink and blue fly faster, purple and gold paint stronger.",
             buddyIcon: "unicorn"
           }
         : {
@@ -769,12 +769,6 @@ function startGame(advancedMode = false) {
   grid.blocked.clear();
   textBubbles.length = 0;
 
-  // Advanced doubles every grumpy's sad meter, so HappyHorn is waiting in the middle of town from the first
-  // grumpy rather than costing the player the tile-picking turn. She is free in both modes; this is the placement.
-  if (advancedMode) {
-    placeBuddy(Math.floor(grid.cols / 2), Math.floor(grid.rows / 2), "unicorn", true);
-  }
-
   beginRoundFlow(1);
 }
 
@@ -1255,6 +1249,7 @@ const UNICORN_RING_COLORS = [
 ];
 const RAINBOW_TOUCH_RADIUS = 16;
 const RAINBOW_LIFE = 1.1;             // seconds a rainbow segment lingers
+const ADVANCED_RAINBOW_MULTIPLIER = 3;
 const RAINBOW_DROP_INTERVAL = 0.03;   // seconds between segments
 const RAINBOW_COLORS = ["#ff5d73","#ff9f45","#ffd93d","#7ee081","#4dc3ff","#b98cff"];
 
@@ -1499,11 +1494,15 @@ function applyHappyHorn(dt) {
     if (u.dropTimer <= 0) {
       u.dropTimer = RAINBOW_DROP_INTERVAL;
       u.colorIndex = (u.colorIndex + 1) % RAINBOW_COLORS.length;
+
+      // Segments carry their own lifespan so the fade still reads right when Advanced Mode stretches it.
+      const life = RAINBOW_LIFE * (state.advancedMode ? ADVANCED_RAINBOW_MULTIPLIER : 1);
       rainbowTrail.push({
         x: u.x,
         y: u.y,
         c: RAINBOW_COLORS[u.colorIndex],
-        life: RAINBOW_LIFE,
+        life,
+        maxLife: life,
         relief: stats.relief
       });
     }
@@ -2101,7 +2100,7 @@ function drawBuddySpriteCentered(ctx, centerX, centerY, pixels, size, tOffset, a
 
 function drawRainbowTrail(ctx) {
   rainbowTrail.forEach(segment => {
-    const fade = segment.life / RAINBOW_LIFE;
+    const fade = segment.life / segment.maxLife;
 
     ctx.globalAlpha = fade * 0.7;
     ctx.fillStyle = segment.c;
@@ -2274,7 +2273,7 @@ function draw(){
       ctx.fillStyle = "#ffd7e8";
       wrapText(
         ctx,
-        "This game was made by EricOP, Asa, and Thea. Codex and Claude were our hard-working robotic partners.",
+        "This game was made by EricOP with his kids Asa and Thea. Codex and Claude were our hard-working robotic partners.",
         canvas.width / 2,
         138,
         270,
