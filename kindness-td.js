@@ -177,7 +177,7 @@ function getInstructionPages(roundNumber) {
       {
         title: "Round 10 Boss Fight",
         body: "Anything Negative Neil brushes past goes grumpy in half a second, so keep your crew off his route. Happy Horn is the one he cannot sour - let her circle him.",
-        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 1500 }
+        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 2700 }
       }
     ];
   }
@@ -317,7 +317,7 @@ function startRound(roundNumber) {
     const boss = createGrumpy(0, {
       isBoss: true,
       bossName: "Negative Neil",
-      bossHp: 1500
+      bossHp: 2700
     });
     boss.path = findPath(START, END) || [];
     state.grumpies.push(boss);
@@ -1552,7 +1552,7 @@ function updateRainbowTrail(dt, helped) {
 // meant he mostly drifted past doing nothing. Now it is contact range and half
 // a second, so walking him into your crew wrecks it - and placement off his
 // route is the counter-play.
-const NEIL_TOUCH_RANGE = 34;      // his radius plus a buddy's: actual contact
+const NEIL_TOUCH_RANGE = 68;      // roughly a cell and a half: close by, not only touching
 const NEIL_DISABLE_TIME = 0.5;    // seconds of contact to sour a buddy
 const NEIL_RECOVER_TIME = 2;      // seconds to shake it off once he has moved on
 
@@ -1561,9 +1561,8 @@ function applyNegativeNeil(dt) {
     if (!grumpy.active || grumpy.isHappy || grumpy.name !== "Negative Neil") return;
 
     forEachBuddy((buddy, kind) => {
-      // HappyHorn is the one he cannot sour. Without this she is actively bad
-      // against him: she orbits her target at 34px, well inside his 90px
-      // aura, so she would fly in and be disabled within about five seconds.
+      // Happy Horn is the one he cannot sour. Without this she is actively bad against him: she orbits her
+      // target at 34px, inside his souring range, so she would fly in and be disabled within seconds.
       if (kind === "unicorn") return;
 
       const distance = Math.hypot(grumpy.x - buddy.x, grumpy.y - buddy.y);
