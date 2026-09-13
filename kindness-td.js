@@ -177,7 +177,7 @@ function getInstructionPages(roundNumber) {
       {
         title: "Round 10 Boss Fight",
         body: "Anything Negative Neil brushes past goes grumpy in half a second, so keep your crew off his route. Happy Horn is the one he cannot sour - let her circle him.",
-        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 2700 }
+        icon: { isBoss: true, bossName: "Negative Neil", bossHp: 3000 }
       }
     ];
   }
@@ -317,7 +317,7 @@ function startRound(roundNumber) {
     const boss = createGrumpy(0, {
       isBoss: true,
       bossName: "Negative Neil",
-      bossHp: 2700
+      bossHp: 3000
     });
     boss.path = findPath(START, END) || [];
     state.grumpies.push(boss);
