@@ -885,10 +885,33 @@ function createGrumpy(delay=0, options = {}){
         });
         retargetStressEater(this);
       } else if(!this.reachedEnd){
-        this.reachedEnd=true;
-        this.active=false;
-        if (this.sad > 0) {
-          state.escapedSad += this.isBoss ? 5 : 1;
+        // Running out of path is not the same as arriving. A Stress Eater whose cookie another one reached
+        // first, or anyone whose route was rebuilt under them, still has somewhere to be - charging a missed
+        // heart there took hearts for grumpies standing halfway across town. Only the exit cell counts.
+        const cell = getCell(this.x, this.y);
+        const atExit = cell.cx === END.x && cell.cy === END.y;
+
+        if (!atExit) {
+          if (this.isStressEater) {
+            this.targetCookie = null;
+            retargetStressEater(this);
+          } else {
+            const path = findPath({ x: cell.cx, y: cell.cy }, END);
+            if (path) {
+              this.path = path;
+              this.pathIndex = 0;
+            }
+          }
+        }
+
+        // Whoever is still out of path has nowhere left to go, so the round can never resolve while they stand
+        // there. That does count, which keeps a genuinely stuck grumpy from hanging the round.
+        if (atExit || this.pathIndex >= this.path.length) {
+          this.reachedEnd=true;
+          this.active=false;
+          if (this.sad > 0) {
+            state.escapedSad += this.isBoss ? 5 : 1;
+          }
         }
       }
     },
