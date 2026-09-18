@@ -151,6 +151,7 @@ const state = {
   instructionPageIndex: 0,
   pausedFromRound: 1,
   menuCreditsOpen: false,
+  difficulty: 0,
   advancedUnlocked: false,
   advancedMode: false,
   justUnlockedAdvanced: false

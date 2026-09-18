@@ -30,9 +30,47 @@ const EASY_ROUNDS = 3;
 const ROUND_SAD_INCREASE = 25;
 const ROUND_SAD_PER_LEVEL = 2;   // every round past the first, on top of the steeper climb after EASY_ROUNDS
 
+// Difficulty multiplies the per-round climb only, not the flat base 100, so round 1 is the same gentle opening on
+// every setting and the challenge lands where the game was going slack: late rounds, once a good crew is compounding.
+// Two names each - the full title labels the menu button and the short one fits the in-game HUD. `heart` is the pixel
+// size of the heart drawn on that button, so the bigger the challenge, the bigger the heart you bring to it.
+const DIFFICULTIES = [
+  { name: "Casual", label: "Casual Complimenter", mult: 1, heart: 2 },
+  { name: "Normal", label: "Normal Encourager", mult: 5, heart: 4 },
+  { name: "Expert", label: "Expert Hugger", mult: 10, heart: 6 }
+];
+
+// 7x6 pixel heart, built from rows rather than a hand-listed pixel array: `X` is the body, `o` the highlight.
+const HEART_ROWS = [
+  ".XX.XX.",
+  "XoXXXXX",
+  "XoXXXXX",
+  ".XXXXX.",
+  "..XXX..",
+  "...X..."
+];
+const HEART_COLS = HEART_ROWS[0].length;
+const HEART_PIXELS = [];
+HEART_ROWS.forEach((row, y) => {
+  [...row].forEach((cell, x) => {
+    if (cell !== ".") HEART_PIXELS.push({ x, y, c: cell === "o" ? "#ffd0e4" : "#ff5f9e" });
+  });
+});
+
+try {
+  const savedDifficulty = +localStorage.getItem("ktd:diff");
+  if (DIFFICULTIES[savedDifficulty]) state.difficulty = savedDifficulty;
+} catch (e) {}
+
+function setDifficulty(index) {
+  state.difficulty = index;
+  try { localStorage.setItem("ktd:diff", index); } catch (e) {}
+}
+
 function getRoundSadBonus(roundNumber) {
-  return Math.max(0, roundNumber - 1) * ROUND_SAD_PER_LEVEL
-       + Math.max(0, roundNumber - EASY_ROUNDS) * ROUND_SAD_INCREASE;
+  return (Math.max(0, roundNumber - 1) * ROUND_SAD_PER_LEVEL
+       + Math.max(0, roundNumber - EASY_ROUNDS) * ROUND_SAD_INCREASE)
+       * DIFFICULTIES[state.difficulty].mult;
 }
 
 const BASE_SPAWN_DELAY = 0.6;
@@ -350,6 +388,12 @@ const advancedModeButton = {
   y: startButton.y,
   w: 200,
   h: 50
+};
+const difficultyButton = {
+  x: canvas.width / 2 - 185,
+  y: 148,
+  w: 370,
+  h: 32
 };
 const creditsButton = {
   x: canvas.width / 2 - 85,
@@ -1837,6 +1881,11 @@ if (state.gameMode === "menu") {
       return;
     }
 
+    if (pointInRect(x, y, difficultyButton)) {
+      setDifficulty((state.difficulty + 1) % DIFFICULTIES.length);
+      return;
+    }
+
     if (pointInRect(x, y, startButton)) {
       startGame(false);
       return;
@@ -2214,7 +2263,38 @@ function draw(){
 
     ctx.font="18px sans-serif";
     ctx.fillStyle="#ffd9f4";
+    ctx.textBaseline="alphabetic";
     ctx.fillText("Help grumpies feel better",canvas.width/2,138);
+
+    const difficulty = DIFFICULTIES[state.difficulty];
+    const heartWidth = HEART_COLS * difficulty.heart;
+    const heartHeight = HEART_ROWS.length * difficulty.heart;
+
+    ctx.fillStyle="#16324f";
+    ctx.fillRect(difficultyButton.x, difficultyButton.y, difficultyButton.w, difficultyButton.h);
+    ctx.strokeStyle="rgba(255,255,255,0.45)";
+    ctx.lineWidth=2;
+    ctx.strokeRect(difficultyButton.x, difficultyButton.y, difficultyButton.w, difficultyButton.h);
+
+    // The heart is centred on the button's height, so the Expert one outgrows the frame and spills over it.
+    drawPixelArt(
+      ctx,
+      difficultyButton.x + difficultyButton.w - heartWidth - 14,
+      difficultyButton.y + (difficultyButton.h - heartHeight) / 2,
+      HEART_PIXELS,
+      difficulty.heart
+    );
+
+    ctx.fillStyle="white";
+    ctx.font="15px sans-serif";
+    ctx.textBaseline="middle";
+    ctx.textAlign="left";
+    ctx.fillText(
+      `Challenge level: ${difficulty.label}`,
+      difficultyButton.x + 16,
+      difficultyButton.y + difficultyButton.h / 2 + 1
+    );
+    ctx.textAlign="center";
 
     ctx.fillStyle="#2c89ff";
     ctx.fillRect(startButton.x,startButton.y,startButton.w,startButton.h);
@@ -2641,6 +2721,9 @@ function draw(){
   ctx.fillText(`Missed Hearts: ${state.escapedSad}/${state.maxEscaped}`,10,60);
   if (state.advancedMode) {
     ctx.fillText("ADV Mode", 10, 80);
+  }
+  if (state.difficulty) {
+    ctx.fillText(DIFFICULTIES[state.difficulty].name, 10, state.advancedMode ? 100 : 80);
   }
 
   ctx.fillStyle = state.gameMode === "paused" ? "#40566f" : "#2f4762";
