@@ -67,10 +67,16 @@ function setDifficulty(index) {
   try { localStorage.setItem("ktd:diff", index); } catch (e) {}
 }
 
+const NORMAL_BASE_SAD = 100;
+
+// The climb before the challenge level is applied. Bosses need it to work out how much the wave around them grew.
+function getRawRoundSadBonus(roundNumber) {
+  return Math.max(0, roundNumber - 1) * ROUND_SAD_PER_LEVEL
+       + Math.max(0, roundNumber - EASY_ROUNDS) * ROUND_SAD_INCREASE;
+}
+
 function getRoundSadBonus(roundNumber) {
-  return (Math.max(0, roundNumber - 1) * ROUND_SAD_PER_LEVEL
-       + Math.max(0, roundNumber - EASY_ROUNDS) * ROUND_SAD_INCREASE)
-       * DIFFICULTIES[state.difficulty].mult;
+  return getRawRoundSadBonus(roundNumber) * DIFFICULTIES[state.difficulty].mult;
 }
 
 const BASE_SPAWN_DELAY = 0.6;
@@ -829,9 +835,16 @@ function createGrumpy(delay=0, options = {}){
   const hpMultiplier = state.advancedMode ? 2 : 1;
   // Double a normal grumpy of the same round, on top of the Advanced doubling.
   const stressEaterMultiplier = isStressEater ? 2 : 1;
-  const roundHpBonus = getRoundSadBonus(state.currentRound);
-  const baseSad = isBoss ? (options.bossHp || 1000) : 100;
-  const maxSad = (baseSad + roundHpBonus) * hpMultiplier * stressEaterMultiplier;
+  const rawRoundBonus = getRawRoundSadBonus(state.currentRound);
+  const normalSad = NORMAL_BASE_SAD + getRoundSadBonus(state.currentRound);
+  // A boss grows by exactly as much as a normal grumpy of its round grew, so it keeps the same standing against the
+  // wave it headlines on every challenge level. Scaling its flat base by the multiplier instead would outpace that
+  // wave, because a boss meter is nearly all base where a minion's is nearly all round bonus: Headphone Hank would
+  // go from 10x a round-5 grumpy on Casual to 23x on Expert Hugger.
+  const maxSad = isBoss
+    ? Math.round(((options.bossHp || 1000) + rawRoundBonus) * normalSad / (NORMAL_BASE_SAD + rawRoundBonus))
+      * hpMultiplier
+    : normalSad * hpMultiplier * stressEaterMultiplier;
   return {
     x: START.x*GRID_SIZE+20,
     y: START.y*GRID_SIZE+20,
@@ -2453,8 +2466,8 @@ function draw(){
         {
           x: canvas.width / 2,
           y: iconCenterY,
-          sad: page.icon.isBoss ? (page.icon.bossHp || 1000) : 100,
-          maxSad: page.icon.isBoss ? (page.icon.bossHp || 1000) : 100,
+          sad: page.icon.isBoss ? (page.icon.bossHp || 1000) : NORMAL_BASE_SAD,
+          maxSad: page.icon.isBoss ? (page.icon.bossHp || 1000) : NORMAL_BASE_SAD,
           isHappy: false,
           isHugged: false,
           hasHeadphones: !!page.icon.hasHeadphones,
