@@ -152,9 +152,24 @@ good crew was built:
 Because it rides on `getRoundSadBonus`, the round intro text ("+N sad meter
 each", "Next round: +N sad") reports the scaled numbers with no extra code.
 
-Boss base sad meters (Headphone Hank 1500, Negative Neil 3000) are **not**
-multiplied - only the round bonus they also receive. The bosses therefore grow
-far less than their minion trains across difficulties.
+Bosses scale by the factor a **normal grumpy of their round** scaled by, not by
+the multiplier directly, so a boss stays the same multiple of the wave it
+headlines on every setting: Headphone Hank ~9.9x a round-5 grumpy, Negative
+Neil ~10.9x a round-10 one. `getRawRoundSadBonus` is the climb before the
+multiplier, and `createGrumpy` uses it to work out how much the wave grew.
+
+Applying the multiplier to a boss's flat base instead was tried and rejected:
+a boss meter is nearly all base where a minion's is nearly all round bonus, so
+the boss outpaces its own wave. Hank went from 9.9x a round-5 grumpy on Casual
+to 22.9x on Expert Hugger (15,580 sad at round 5, before much crew is built).
+
+| boss        | Casual | Normal | Expert |
+|-------------|--------|--------|--------|
+| Hank (r5)   | 1558   | 3846   | 6705   |
+| Neil (r10)  | 3193   | 11606  | 22122  |
+
+Advanced Mode's x2 `hpMultiplier` stacks on top of all of this, so Expert plus
+Advanced puts Neil at 44,244.
 
 Saved to `localStorage` under `ktd:diff` alongside `ktd:music`, wrapped in
 try/catch, and the stored index is validated against `DIFFICULTIES` before use
