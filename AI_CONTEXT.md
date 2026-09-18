@@ -122,6 +122,47 @@ match: `buddyCosts`, `placeBuddy`, `canPlaceBuddy`, `buddyPixelArt`, `hugBuddies
 
 ---
 
+## Difficulty
+
+One **Challenge level** button on the title screen, above Start Game, that
+cycles through three settings named the way a player would describe themselves
+rather than as levels: **Casual Complimenter** (x1), **Normal Encourager**
+(x5), **Expert Hugger** (x10).
+
+A pixel heart sits at the right end of the button and scales with the setting
+(`heart`: 2, 4, 6 pixel blocks) so the choice reads at a glance without any
+text. It is centred on the button's height, so the Expert heart deliberately
+outgrows the frame and spills over it. The heart itself is built from the
+`HEART_ROWS` strings rather than a hand-listed pixel array, and drawn through
+the existing `drawPixelArt`.
+
+The multiplier applies to the **per-round climb only** (`getRoundSadBonus`),
+not to the flat 100 base sad meter. Round 1 is therefore identical on all three
+settings and the opening stays gentle for younger players; the difference
+compounds into the late rounds, which is where the game was going slack once a
+good crew was built:
+
+| round | Casual | Normal | Expert |
+|-------|--------|--------|--------|
+| 1     | 100    | 100    | 100    |
+| 3     | 104    | 120    | 140    |
+| 5     | 158    | 390    | 680    |
+| 10    | 293    | 1065   | 2030   |
+
+Because it rides on `getRoundSadBonus`, the round intro text ("+N sad meter
+each", "Next round: +N sad") reports the scaled numbers with no extra code.
+
+Boss base sad meters (Headphone Hank 1500, Negative Neil 3000) are **not**
+multiplied - only the round bonus they also receive. The bosses therefore grow
+far less than their minion trains across difficulties.
+
+Saved to `localStorage` under `ktd:diff` alongside `ktd:music`, wrapped in
+try/catch, and the stored index is validated against `DIFFICULTIES` before use
+so a junk value cannot throw. Advanced Mode's own x2 `hpMultiplier` is separate
+and stacks on top.
+
+---
+
 ## Architecture Rules (VERY IMPORTANT)
 
 - DO NOT introduce frameworks (no Phaser, React, etc.)
