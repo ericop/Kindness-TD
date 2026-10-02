@@ -433,7 +433,9 @@ const buildMenuButtons = [
   { label: "TherapyDog", buddyType: "dog" },
   { label: "AffirmingWords", buddyType: "affirm" },
   { label: "GladRadio", buddyType: "radio" },
-  { label: "Happy Horn", buddyType: "unicorn" }
+  { label: "Happy Horn", buddyType: "unicorn" },
+  // Clicking off the menu already closed it, but playtesters did not find that.
+  { label: "(cancel)", cancel: true }
 ];
 
 const BUILD_MENU_COLS = 2;
@@ -1732,7 +1734,7 @@ function getUnicornUpgradeButton(u) {
   };
 }
 
-function drawPopupButton(ctx, rect, label, enabled) {
+function drawPopupButton(ctx, rect, label, enabled, textColor = "#ffffff") {
   ctx.fillStyle = "#243b55";
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
@@ -1740,7 +1742,7 @@ function drawPopupButton(ctx, rect, label, enabled) {
   ctx.lineWidth = 2;
   ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
 
-  ctx.fillStyle = enabled ? "#ffffff" : "#8a8a8a";
+  ctx.fillStyle = enabled ? textColor : "#8a8a8a";
   ctx.font = "12px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -1979,7 +1981,9 @@ if (state.gameMode === "menu") {
 
     const menuButton = getPlacementMenuButtonAt(x, y);
     if (menuButton) {
-      if (click && canPlaceBuddy(menuButton.buddyType)) {
+      if (click && menuButton.cancel) {
+        placementMenu.active = false;
+      } else if (click && canPlaceBuddy(menuButton.buddyType)) {
         selectedBuddy = menuButton.buddyType;
         placeBuddy(placementMenu.cx, placementMenu.cy, menuButton.buddyType);
         placementMenu.active = false;
@@ -2752,6 +2756,7 @@ function draw(){
 
   if (placementMenu.active) {
     getPlacementMenuButtons(placementMenu.cx, placementMenu.cy).forEach(button => {
+      if (button.cancel) return drawPopupButton(ctx, button, button.label, true, "#ffb38a");
       const cost = buddyCosts[button.buddyType];
       drawPopupButton(ctx, button, `${button.label} (${cost || "Free"})`, canPlaceBuddy(button.buddyType));
     });
